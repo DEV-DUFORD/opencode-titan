@@ -21,6 +21,7 @@ export const ChildAgentConfigSchema = z
     temperature: z.number().min(0).max(2).optional(),
     variant: z.string().optional(),
     displayName: z.string().min(1).optional(),
+    provider: z.string().min(1).optional(),
   })
   .strict();
 
@@ -45,7 +46,7 @@ export const PluginConfigSchema = z.object({
   disabled_tools: z.array(z.string()).optional(),
   backgroundJobs: z
     .object({
-      maxSessionsPerAgent: z.number().int().min(1).max(10).default(2),
+      maxSessionsPerAgent: z.number().int().min(1).max(10).default(10),
     })
     .optional(),
 });

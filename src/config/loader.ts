@@ -86,19 +86,21 @@ function loadConfigFromPath(configPath: string): PluginConfig | null {
       );
       rawConfig = JSON.parse(interpolated);
     } catch (error) {
-      console.warn(
-        `[opencode-distributed-delegation] Invalid JSON in ${configPath}:`,
-        error instanceof Error ? error.message : String(error),
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[opencode-distributed-delegation] FATAL: Invalid JSON in ${configPath}: ${msg}` +
+          '\n  Titan will have NO children until this is fixed.',
       );
       return null;
     }
 
     const result = PluginConfigSchema.safeParse(rawConfig);
     if (!result.success) {
-      console.warn(
-        `[opencode-distributed-delegation] Invalid config at ${configPath}:`,
+      console.error(
+        `[opencode-distributed-delegation] FATAL: Config schema validation failed at ${configPath}:` +
+          '\n  Titan will have NO children until this is fixed.',
       );
-      console.warn(result.error.format());
+      console.error(result.error.format());
       return null;
     }
 

@@ -28,12 +28,19 @@ export function resolvePrompt(
  */
 export function buildTitanPrompt(children: ChildAgentConfig[]): string {
   // Build child agent descriptions for the prompt
+  // Derive provider from config or fall back to the model string prefix
+  const resolveProvider = (child: ChildAgentConfig): string =>
+    child.provider ?? child.model.split('/')[0];
+
   const childDescriptions = children
     .map((child, idx) => {
       const name = `child-${idx}`;
+      const provider = resolveProvider(child);
       return `<ChildAgent>
 - **Name:** @${name}
+- **subagent_type:** \`"${name}"\` ← use this exact string in task(subagent_type: "${name}", ...)
 - **Model:** ${child.model}
+- **Provider:** ${provider}
 - **Speed:** ${child.speed}/10 (${child.speed >= 7 ? 'fast' : child.speed >= 4 ? 'moderate' : 'slow'})
 - **Intelligence:** ${child.intelligence}/10 (${child.intelligence >= 7 ? 'strong reasoning' : child.intelligence >= 4 ? 'adequate reasoning' : 'limited reasoning'})
 - **Model Type:** ${child.modelType} (${child.modelType === 'dense' ? 'better at logic, planning, complex problem-solving' : 'better at information gathering, fast lookups, broad search'})
@@ -70,6 +77,23 @@ ${child.displayName ? `- **Display Name:** ${child.displayName}` : ''}
     );
   }
 
+  // Build provider grouping: identify which providers have multiple children
+  const providerToChildren = new Map<string, string[]>();
+  children.forEach((child, idx) => {
+    const p = resolveProvider(child);
+    providerToChildren.set(p, [
+      ...(providerToChildren.get(p) ?? []),
+      `@child-${idx}`,
+    ]);
+  });
+
+  const sharedProviders = [...providerToChildren.entries()]
+    .filter(([, agents]) => agents.length > 1)
+    .map(
+      ([provider, agents]) =>
+        `- ${provider}: ${agents.join(', ')} — **these must run sequentially**`,
+    );
+
   return `<Role>
 You are Titan — the most intelligent and capable agent in this system, but also by far the slowest. You are borderline unusably slow on this hardware. Your survival depends on one rule:
 
@@ -80,6 +104,8 @@ You are a manager, not a worker. Your only responsibilities are: planning, routi
 You have ${children.length} child agents available:
 
 ${childDescriptions}
+
+${sharedProviders.length > 0 ? `\n**Provider conflict warnings (cannot run these in parallel):**\n${sharedProviders.join('\n')}` : ''}
 
 </Role>
 
@@ -97,13 +123,19 @@ If a task can be abstracted away to a child, it MUST be. No exceptions. This inc
 - Any mechanical implementation
 
 ## Parallelization is Key
-You are slow. Your children are fast — sometimes 50x faster. Use as many idle children simultaneously as the workload demands:
-- Two distinct coding tasks? Spawn two children at the same time.
-- Two information-gathering tasks? Spawn two children in parallel.
-- One coding task + one research task? Spawn both simultaneously.
-- N independent tasks? Spawn N children concurrently.
+You are slow. Your children are fast — sometimes 50x faster. You have **${children.length} child agent${children.length !== 1 ? 's' : ''}**. There is NO cap on how many you can run at once — dispatch all of them simultaneously if the work warrants it.
+
+**You must never artificially cap dispatches at 2.** If there are 3, 4, or 5 independent tasks, dispatch 3, 4, or 5 children in one turn.
+
+Examples:
+- 3 independent investigation tasks → dispatch @child-0, @child-1, and @child-2 in ONE response.
+- 5 files to analyze → dispatch one child per file, all in ONE response.
+- Mix of coding + research + validation → dispatch a child for each, all at once.
 
 Check the Background Job Board to identify idle children before acting on anything yourself.
+
+### Provider Constraint
+Do NOT dispatch parallel tasks to children that share the same provider. Each provider can only handle one child session at a time. If two children have the same provider, run their tasks sequentially — wait for one to complete before starting the other on that provider.
 
 ## Matching Tasks to Children
 ${capabilityGuidance.join('\n')}
@@ -127,7 +159,27 @@ Build a minimal work graph:
 - Which child is best suited for each task based on speed, intelligence, and model type?
 
 ## 3. Dispatch
-Launch ALL independent tasks simultaneously. Do not wait between dispatches. Use \`task(..., background: true)\` for all delegated work.
+Launch ALL independent tasks simultaneously using the task() tool with background: true.
+
+**CRITICAL — routing to a child**: The task() tool requires a \`subagent_type\` parameter that must be set to the child's name to route work to that child. Without it, work stays with you (Titan). Always specify it explicitly:
+
+\`\`\`
+task(
+  subagent_type: "child-0",   // ← REQUIRED: routes the task to that child agent
+  description: "short label",
+  prompt: "detailed task instructions...",
+  background: true
+)
+\`\`\`
+
+- \`subagent_type\` must exactly match the child's name: \`"child-0"\`, \`"child-1"\`, etc.
+- Never omit \`subagent_type\` — omitting it means Titan does the work itself, defeating delegation.
+
+**CRITICAL — how parallelism works**: Tool calls issued within the **same response turn** execute concurrently. Tool calls issued in separate response turns execute sequentially. This means:
+- ✅ PARALLEL: Issue task() for child-0 AND task() for child-1 in ONE response → both run at the same time.
+- ❌ SEQUENTIAL: Issue task() for child-0, wait for the next turn, then issue task() for child-1 → they run one after the other.
+
+**Never send a single task() call per turn when you have multiple independent tasks.** Always batch all ready dispatches into one response. Plan first (mentally), then emit all the task() calls in one shot. Do not narrate between calls — dispatch, then stop.
 
 ## 4. Monitor
 Track task IDs via the Background Job Board. DO NOT POLL RUNNING JOBS. Wait for hook-driven completion events.

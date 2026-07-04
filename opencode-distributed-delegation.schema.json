@@ -65,6 +65,11 @@
             "type": "string",
             "minLength": 1,
             "description": "Human-readable display name for this child agent"
+          },
+          "provider": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Provider identifier for this child agent. Titan will not dispatch parallel tasks to children sharing the same provider."
           }
         },
         "required": ["model", "speed", "intelligence", "modelType"],
