@@ -1,7 +1,10 @@
 import type { Plugin } from '@opencode-ai/plugin';
 import { createAgents, getAgentConfigs } from './agents';
 import { loadPluginConfig, TITAN_AGENT_NAME } from './config';
-import { DELEGATION_REMINDER } from './config/constants';
+import {
+  DELEGATION_REMINDER,
+  PER_MESSAGE_DELEGATION_REMINDER,
+} from './config/constants';
 
 const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
   let config: ReturnType<typeof loadPluginConfig>;
@@ -64,15 +67,46 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
       }
     },
 
-    // Track which agent each session uses for serve-mode prompt injection
+    // Track which agent each session uses for serve-mode prompt injection,
+    // and re-assert the delegation directive on every user turn to Titan.
     'chat.message': async (
       input: { sessionID: string; agent?: string },
-      output?: { message?: { agent?: string } },
+      output?: {
+        message?: { id?: string; agent?: string };
+        parts?: Array<Record<string, unknown>>;
+      },
     ) => {
       const agent = input.agent ?? output?.message?.agent;
       if (agent) {
         sessionAgentMap.set(input.sessionID, agent);
       }
+
+      if (agent !== TITAN_AGENT_NAME || !output?.parts) {
+        return;
+      }
+
+      // Avoid double-injection (e.g. hook re-runs on the same message).
+      const alreadyInjected = output.parts.some(
+        (p) =>
+          p &&
+          p.type === 'text' &&
+          typeof p.text === 'string' &&
+          (p.text as string).includes('<delegation_directive>'),
+      );
+      if (alreadyInjected) {
+        return;
+      }
+
+      // Append a synthetic text part after the user's content so the directive
+      // is the most recent instruction Titan sees before responding.
+      output.parts.push({
+        id: `prt_deleg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+        sessionID: input.sessionID,
+        messageID: output.message?.id ?? '',
+        type: 'text',
+        text: PER_MESSAGE_DELEGATION_REMINDER,
+        synthetic: true,
+      });
     },
 
     // Inject delegation reminder for Titan in serve-mode sessions
