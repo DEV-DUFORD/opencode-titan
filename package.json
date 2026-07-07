@@ -1,7 +1,7 @@
 {
   "name": "opencode-distributed-delegation",
   "version": "0.1.0",
-  "description": "Distributed delegation plugin for OpenCode — Titan orchestrator with parallel child agents",
+  "description": "Distributed delegation plugin for OpenCode — Titan orchestrator with parallel Myrmidons",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {

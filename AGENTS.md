@@ -4,12 +4,12 @@ This document provides guidelines for AI agents operating in this repository.
 
 ## Project Overview
 
-**opencode-distributed-delegation** — A distributed delegation plugin for OpenCode. Features a "Titan" orchestrator agent that delegates all executable work to faster child agents, maximizing parallelism and minimizing Titan's slow inference time.
+**opencode-distributed-delegation** — A distributed delegation plugin for OpenCode. Features a "Titan" orchestrator agent that delegates all executable work to faster Myrmidons, maximizing parallelism and minimizing Titan's slow inference time.
 
 ## Architecture
 
 - **Titan**: The primary agent. Most intelligent but slowest. Its only job is planning, routing, and synthesizing results.
-- **Children**: N configurable child agents. Each has `speed` (1-10), `intelligence` (1-10), and `modelType` (`dense` | `sparse`). They execute delegated tasks and report back concisely.
+- **Myrmidons**: N configurable worker agents. Each has `speed` (1-10), `intelligence` (1-10), and `modelType` (`dense` | `sparse`). They execute delegated tasks and report back concisely. Configured via the `myrmidons` key (the legacy `children` key is a deprecated alias).
 
 ## Commands
 
@@ -40,10 +40,10 @@ opencode-distributed-delegation/
 │   ├── agents/
 │   │   ├── index.ts       # Agent factory orchestration
 │   │   ├── titan.ts       # Titan agent definition + prompt builder
-│   │   └── child.ts       # Child agent factory
+│   │   └── myrmidon.ts    # Myrmidon agent factory
 │   ├── config/
 │   │   ├── index.ts       # Config exports
-│   │   ├── schema.ts      # Zod schemas (PluginConfig, ChildAgentConfig)
+│   │   ├── schema.ts      # Zod schemas (PluginConfig, MyrmidonConfig)
 │   │   ├── loader.ts      # Config loading (user + project)
 │   │   └── constants.ts   # Agent names, reminders
 ├── opencode-distributed-delegation.schema.json  # JSON schema for config
@@ -68,7 +68,7 @@ Users configure the plugin via `opencode-distributed-delegation.jsonc` in their 
   "titan": {
     "model": "anthropic/claude-sonnet-4-20250514"
   },
-  "children": [
+  "myrmidons": [
     {
       "model": "openai/gpt-4.1-mini",
       "speed": 9,

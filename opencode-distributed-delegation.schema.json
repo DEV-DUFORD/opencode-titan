@@ -26,59 +26,19 @@
       },
       "additionalProperties": false
     },
+    "myrmidons": {
+      "type": "array",
+      "description": "Myrmidon configurations. Each Myrmidon is a faster but more limited agent that Titan delegates work to.",
+      "items": {
+        "$ref": "#/$defs/myrmidon"
+      }
+    },
     "children": {
       "type": "array",
-      "description": "Child agent configurations. Each child is a faster but more limited agent that Titan delegates work to.",
+      "deprecated": true,
+      "description": "DEPRECATED: use `myrmidons` instead. Retained for backwards compatibility. If both are set, `myrmidons` takes precedence.",
       "items": {
-        "type": "object",
-        "properties": {
-          "model": {
-            "type": "string",
-            "description": "Model ID for this child agent (provider/model format)"
-          },
-          "speed": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 10,
-            "description": "Relative speed of this agent (1=slowest, 10=fastest). Used by Titan to prioritize dispatch."
-          },
-          "intelligence": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 10,
-            "description": "Reasoning capability of this agent (1=limited, 10=strong). Used by Titan to match task complexity."
-          },
-          "modelType": {
-            "type": "string",
-            "enum": ["dense", "sparse"],
-            "description": "Model architecture type. 'dense' = slower but better at logic and complex reasoning. 'sparse' = faster, better at information gathering and broad search."
-          },
-          "maxInstances": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Maximum number of parallel instances Titan may run for this child. Since instances share the same model (already loaded in the provider's VRAM), they can run concurrently on the same provider. Defaults to 1."
-          },
-          "temperature": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 2
-          },
-          "variant": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Human-readable display name for this child agent"
-          },
-          "provider": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Provider identifier for this child agent. Titan will not dispatch parallel tasks to children sharing the same provider."
-          }
-        },
-        "required": ["model", "speed", "intelligence", "modelType"],
-        "additionalProperties": false
+        "$ref": "#/$defs/myrmidon"
       }
     },
     "disabled_tools": {
@@ -96,12 +56,65 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 10,
-          "description": "Maximum concurrent background sessions per child agent"
+          "description": "Maximum concurrent background sessions per Myrmidon"
         }
       },
       "additionalProperties": false
     }
   },
+  "$defs": {
+    "myrmidon": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Model ID for this Myrmidon (provider/model format)"
+        },
+        "speed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Relative speed of this agent (1=slowest, 10=fastest). Used by Titan to prioritize dispatch."
+        },
+        "intelligence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Reasoning capability of this agent (1=limited, 10=strong). Used by Titan to match task complexity."
+        },
+        "modelType": {
+          "type": "string",
+          "enum": ["dense", "sparse"],
+          "description": "Model architecture type. 'dense' = slower but better at logic and complex reasoning. 'sparse' = faster, better at information gathering and broad search."
+        },
+        "maxInstances": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of parallel instances Titan may run for this Myrmidon. Since instances share the same model (already loaded in the provider's VRAM), they can run concurrently on the same provider. Defaults to 1."
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "variant": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable display name for this Myrmidon"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Provider identifier for this Myrmidon. Titan will not dispatch parallel tasks to Myrmidons sharing the same provider."
+        }
+      },
+      "required": ["model", "speed", "intelligence", "modelType"],
+      "additionalProperties": false
+    }
+  },
   "title": "opencode-distributed-delegation",
-  "description": "Configuration schema for opencode-distributed-delegation plugin — Titan orchestrator with parallel child agents"
+  "description": "Configuration schema for opencode-distributed-delegation plugin — Titan orchestrator with parallel Myrmidons"
 }

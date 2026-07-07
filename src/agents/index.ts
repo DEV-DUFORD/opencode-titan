@@ -1,20 +1,25 @@
 import type { AgentConfig as SDKAgentConfig } from '@opencode-ai/sdk/v2';
 import {
+  getMyrmidonConfigs,
   loadAgentPrompt,
   type PluginConfig,
   TITAN_AGENT_NAME,
 } from '../config';
-import { createChildAgent } from './child';
+import { createMyrmidonAgent } from './myrmidon';
 import { type AgentDefinition, createTitanAgent, resolvePrompt } from './titan';
 
 /**
- * Create all agent definitions: Titan + N children.
+ * Create all agent definitions: Titan + N Myrmidons.
+ *
+ * Each Myrmidon is also registered under its deprecated `child-N` alias so that
+ * existing configs, custom prompts, or sessions that route via the old name
+ * keep working.
  */
 export function createAgents(
   config?: PluginConfig,
   options?: { projectDirectory?: string },
 ): AgentDefinition[] {
-  const children = config?.children ?? [];
+  const myrmidons = getMyrmidonConfigs(config);
 
   // Resolve Titan model
   const titanModel = config?.titan?.model;
@@ -26,7 +31,7 @@ export function createAgents(
 
   // Create Titan
   const titan = createTitanAgent(
-    children,
+    myrmidons,
     typeof titanModel === 'string' ? titanModel : undefined,
     config?.titan?.prompt,
     undefined,
@@ -49,12 +54,21 @@ export function createAgents(
     }
   }
 
-  // Create children
-  const childAgents = children.map((childConfig, idx) =>
-    createChildAgent(idx, childConfig),
+  // Create Myrmidons (canonical `myrmidon-N`)
+  const myrmidonAgents = myrmidons.map((myrmidonConfig, idx) =>
+    createMyrmidonAgent(idx, myrmidonConfig),
   );
 
-  return [titan, ...childAgents];
+  // Register deprecated `child-N` aliases pointing to the same config so old
+  // routing names continue to resolve. Docs steer users to `myrmidon-N`.
+  const aliasAgents: AgentDefinition[] = myrmidonAgents.map((agent, idx) => ({
+    ...agent,
+    name: `child-${idx}`,
+    description:
+      `[Deprecated alias of @myrmidon-${idx}] ${agent.description ?? ''}`.trim(),
+  }));
+
+  return [titan, ...myrmidonAgents, ...aliasAgents];
 }
 
 /**

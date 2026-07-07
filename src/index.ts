@@ -1,13 +1,15 @@
 import type { Plugin } from '@opencode-ai/plugin';
-import { createAgents, getAgentConfigs } from './agents';
+import { getAgentConfigs } from './agents';
 import {
   type AgentLockInfo,
   buildAgentLockInfoMap,
+  getMyrmidonConfigs,
   loadPluginConfig,
   TITAN_AGENT_NAME,
 } from './config';
 import {
   DELEGATION_REMINDER,
+  DELEGATION_REMINDER_SENTINEL,
   PER_MESSAGE_DELEGATION_REMINDER,
 } from './config/constants';
 import { ProviderLockManager } from './utils/provider-lock';
@@ -19,7 +21,6 @@ const PROVIDER_LOCK_TIMEOUT_MS = 30 * 60 * 1000;
 const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
   let config: ReturnType<typeof loadPluginConfig>;
   let agents: ReturnType<typeof getAgentConfigs>;
-  let agentDefs: ReturnType<typeof createAgents>;
   let sessionAgentMap: Map<string, string>;
   // Runtime enforcement of the provider constraint: serialize *different
   // models* that share a provider, while allowing up to `maxInstances`
@@ -29,11 +30,10 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
 
   try {
     config = loadPluginConfig(ctx.directory);
-    agentDefs = createAgents(config, { projectDirectory: ctx.directory });
     agents = getAgentConfigs(config, { projectDirectory: ctx.directory });
     sessionAgentMap = new Map<string, string>();
     providerLocks = new ProviderLockManager();
-    agentLockInfoMap = buildAgentLockInfoMap(config.children ?? []);
+    agentLockInfoMap = buildAgentLockInfoMap(getMyrmidonConfigs(config));
   } catch (err) {
     console.error(
       `[opencode-distributed-delegation] FATAL: init failed: ${err}`,
@@ -41,12 +41,12 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
     throw err;
   }
 
-  // Validate that we have at least Titan + 1 child
-  const childCount = agentDefs.length - 1; // minus Titan
-  if (childCount < 1) {
+  // Validate that we have at least Titan + 1 Myrmidon
+  const myrmidonCount = getMyrmidonConfigs(config).length;
+  if (myrmidonCount < 1) {
     console.warn(
-      '[opencode-distributed-delegation] WARN: No child agents configured. ' +
-        'Titan cannot delegate without children. Add children to your config.',
+      '[opencode-distributed-delegation] WARN: No Myrmidons configured. ' +
+        'Titan cannot delegate without Myrmidons. Add myrmidons to your config.',
     );
   }
 
@@ -73,7 +73,7 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
 
     agent: agents,
 
-    // Enforce the provider constraint at runtime. A child agent's provider
+    // Enforce the provider constraint at runtime. A Myrmidon's provider
     // represents the physical backend serving its model; a backend can only
     // hold ONE model in VRAM at a time. So different models on the same
     // provider are serialized, while up to `maxInstances` instances of the SAME
@@ -213,8 +213,7 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
         // Inject the delegation reminder at the end of the system prompt
         const alreadyInjected = output.system.some(
           (s) =>
-            typeof s === 'string' &&
-            s.includes('DELEGATE EVERYTHING POSSIBLE TO CHILDREN'),
+            typeof s === 'string' && s.includes(DELEGATION_REMINDER_SENTINEL),
         );
 
         if (!alreadyInjected) {
@@ -258,4 +257,9 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
 
 export default OpenCodeDistributedDelegation;
 
-export type { ChildAgentConfig, ModelType, PluginConfig } from './config';
+export type {
+  ChildAgentConfig,
+  ModelType,
+  MyrmidonConfig,
+  PluginConfig,
+} from './config';

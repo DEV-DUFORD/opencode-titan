@@ -1,13 +1,13 @@
 # opencode-distributed-delegation
 
-A distributed delegation plugin for OpenCode (v1.3.x) that implements a "Titan" orchestrator agent pattern. A single intelligent but slow "Titan" agent delegates all executable work to faster child agents, maximizing parallelism and minimizing Titan's inference time.
+A distributed delegation plugin for OpenCode (v1.3.x) that implements a "Titan" orchestrator agent pattern. A single intelligent but slow "Titan" agent delegates all executable work to faster Myrmidons, maximizing parallelism and minimizing Titan's inference time.
 
 ## Core Concept
 
 The plugin is built on a simple philosophy: **parallelize aggressively, delegate everything, never poll running jobs.**
 
-- **Titan** — The primary agent. Most intelligent but borderline unusably slow. Its ONLY job is planning, routing, quality-gating, and synthesizing results from children. It NEVER does work a child can handle.
-- **Children** — N configurable child agents, each with `speed` (1-10), `intelligence` (1-10), and `modelType` (`dense` | `sparse`). They execute delegated tasks and report back concisely (enforced 1-paragraph, 500-word max responses).
+- **Titan** — The primary agent. Most intelligent but borderline unusably slow. Its ONLY job is planning, routing, quality-gating, and synthesizing results from Myrmidons. It NEVER does work a Myrmidon can handle.
+- **Myrmidons** — N configurable worker agents, each with `speed` (1-10), `intelligence` (1-10), and `modelType` (`dense` | `sparse`). They execute delegated tasks and report back concisely (enforced 1-paragraph, 500-word max responses). Configured via the `myrmidons` key (the legacy `children` key remains a deprecated alias).
 
 ## Architecture
 
@@ -22,7 +22,7 @@ opencode-distributed-delegation/
 │   ├── agents/
 │   │   ├── index.ts       # createAgents() + getAgentConfigs() orchestration
 │   │   ├── titan.ts       # Titan agent definition + dynamic prompt builder
-│   │   └── child.ts       # Child agent factory
+│   │   └── myrmidon.ts    # Myrmidon agent factory
 │   ├── config/
 │   │   ├── index.ts       # Re-exports
 │   │   ├── schema.ts      # Zod schemas
@@ -43,7 +43,7 @@ The plugin registers five hooks in `src/index.ts`:
 
 | Hook | Purpose |
 |------|---------|
-| `agent` | Returns the agents record (Titan + children) for OpenCode to register. |
+| `agent` | Returns the agents record (Titan + Myrmidons) for OpenCode to register. |
 | `config` | Sets Titan as the default agent; merges plugin agents into the opencode config. |
 | `chat.message` | Tracks which agent is active per session via `sessionAgentMap`. |
 | `experimental.chat.system.transform` | Injects `DELEGATION_REMINDER` into Titan's system prompt at runtime (serve-mode), preventing double-injection via a sentinel check. |
@@ -63,7 +63,7 @@ Users configure the plugin via `opencode-distributed-delegation.jsonc`:
     "variant": "default",
     "prompt": "custom prompt string"
   },
-  "children": [
+  "myrmidons": [
     {
       "model": "openai/gpt-4.1-mini",
       "speed": 9,
@@ -99,25 +99,25 @@ The config system supports two layers: user-level (global) and project-level, wi
 
 Three Zod schemas define the configuration shape:
 
-- `PluginConfig` — Top-level plugin configuration.
-- `ChildAgentConfig` — Per-child agent settings.
+- `PluginConfig` — Top-level plugin configuration. Accepts a `myrmidons` array (and the deprecated `children` alias).
+- `MyrmidonConfig` — Per-Myrmidon agent settings (exported as `ChildAgentConfig` too, for backwards compatibility).
 - `TitanOverrideConfig` — Titan-specific overrides.
 
 ## Agent Details
 
 ### Titan (`src/agents/titan.ts`)
 
-Titan's system prompt is dynamically generated per-session based on the configured children fleet. It includes:
+Titan's system prompt is dynamically generated per-session based on the configured Myrmidon fleet. It includes:
 
-- Per-child descriptions with their speed, intelligence, model type, and max instances.
-- Provider conflict warnings — children running different models on the same provider must run sequentially; a child with `maxInstances > 1` may self-parallelize (same model, one VRAM load).
+- Per-Myrmidon descriptions with their speed, intelligence, model type, and max instances.
+- Provider conflict warnings — Myrmidons running different models on the same provider must run sequentially; a Myrmidon with `maxInstances > 1` may self-parallelize (same model, one VRAM load).
 - Capability-based delegation guidance derived from the fleet composition.
 - Full workflow instructions for planning, dispatching, and synthesizing.
 - `DELEGATION_REMINDER` appended at the end to keep Titan in delegation mode.
 
-### Child Agents (`src/agents/child.ts`)
+### Myrmidons (`src/agents/myrmidon.ts`)
 
-- Named `child-{index}`.
+- Named `myrmidon-{index}` (also registered under the deprecated `child-{index}` alias for backwards compatibility).
 - Responses to Titan are enforced to a single paragraph, maximum 500 words.
 - Model-type-specific behavioral hints: `dense` models are guided toward logic and reasoning tasks; `sparse` models toward information gathering and search.
 - Temperature defaults to 0.1.

@@ -11,9 +11,9 @@
 
 ## What's This Plugin
 
-`opencode-titan` is an agent-orchestration plugin for [OpenCode](https://github.com/sst/opencode). It introduces a **Titan orchestrator** — your most capable (and slowest, most expensive) model — whose only job is to think, plan, and route. Every piece of executable work is handed off to a fleet of faster **child agents** that run in parallel.
+`opencode-titan` is an agent-orchestration plugin for [OpenCode](https://github.com/sst/opencode). It introduces a **Titan orchestrator** — your most capable (and slowest, most expensive) model — whose only job is to think, plan, and route. Every piece of executable work is handed off to a fleet of faster **Myrmidons** that run in parallel.
 
-The core idea is simple: **your smartest model is often your slowest and most expensive one.** Titan is meant to be a frontier heavyweight — something like Opus 5.5, GLM 5.2, or a beast like Nex N2 Pro running on local hardware: far slower and pricier than a typical local model, but far smarter. Instead of letting a model like that grind through file reads, searches, and edits — burning tokens and wall-clock time on grunt work — Titan spends its expensive inference budget only on planning and synthesis, while cheaper, faster children do the legwork simultaneously.
+The core idea is simple: **your smartest model is often your slowest and most expensive one.** Titan is meant to be a frontier heavyweight — something like Opus 5.5, GLM 5.2, or a beast like Nex N2 Pro running on local hardware: far slower and pricier than a typical local model, but far smarter. Instead of letting a model like that grind through file reads, searches, and edits — burning tokens and wall-clock time on grunt work — Titan spends its expensive inference budget only on planning and synthesis, while cheaper, faster Myrmidons do the legwork simultaneously.
 
 The result is a workflow that balances **quality, speed, and cost** — deep reasoning where it matters, raw throughput everywhere else.
 
@@ -23,12 +23,12 @@ To meet the agents, jump to **[Meet the Agents](#meet-the-agents)**. For setup, 
 
 The plugin builds a two-tier hierarchy of agents:
 
-- **Titan** dispatches all independent tasks to children **in parallel** within a single response turn.
-- **Children** share model providers, so children running **different models** on the same provider are scheduled sequentially — a provider (physical backend) holds only one model in VRAM at a time. A child with `maxInstances > 1` is the exception: multiple instances of its *same* model run in parallel on that provider. The plugin detects provider conflicts and warns Titan so it can plan around them.
-- Titan **never** performs work a child can handle — it plans, routes, quality-gates, and synthesizes results.
+- **Titan** dispatches all independent tasks to Myrmidons **in parallel** within a single response turn.
+- **Myrmidons** share model providers, so Myrmidons running **different models** on the same provider are scheduled sequentially — a provider (physical backend) holds only one model in VRAM at a time. A Myrmidon with `maxInstances > 1` is the exception: multiple instances of its *same* model run in parallel on that provider. The plugin detects provider conflicts and warns Titan so it can plan around them.
+- Titan **never** performs work a Myrmidon can handle — it plans, routes, quality-gates, and synthesizes results.
 
 > [!TIP]
-> The magic is in the prompt. Titan's system prompt is generated dynamically per session from your configured fleet — it knows each child's speed, intelligence, model type, and provider, and delegates accordingly.
+> The magic is in the prompt. Titan's system prompt is generated dynamically per session from your configured fleet — it knows each Myrmidon's speed, intelligence, model type, and provider, and delegates accordingly.
 
 ## Installation
 
@@ -65,7 +65,7 @@ Restart OpenCode and Titan becomes your default agent.
 
 2. **Pick your Titan** — the smartest model you have, even if it's slow and expensive (think Opus 5.5, GLM 5.2, or Nex N2 Pro on local hardware).
 
-3. **Assemble your fleet** — one or more children, each rated for `speed`, `intelligence`, and `modelType`.
+3. **Assemble your fleet** — one or more Myrmidons, each rated for `speed`, `intelligence`, and `modelType`.
 
 4. **Start OpenCode.** Titan becomes the default agent and delegates from there.
 
@@ -80,9 +80,9 @@ Here's a complete starting configuration:
     "temperature": 0.1
   },
 
-  // Required: at least one child agent.
-  // Children should be fast and cheap — they do the actual work.
-  "children": [
+  // Required: at least one Myrmidon.
+  // Myrmidons should be fast and cheap — they do the actual work.
+  "myrmidons": [
     {
       "model": "openai/gpt-4.1-mini",
       "speed": 9,
@@ -100,14 +100,17 @@ Here's a complete starting configuration:
 }
 ```
 
+> [!NOTE]
+> The legacy `children` key is still accepted as a deprecated alias for `myrmidons` (and each Myrmidon is also routable under its old `child-N` name), so existing configs keep working. New configs should use `myrmidons`. If both keys are present, `myrmidons` wins.
+
 > [!TIP]
-> Mix providers to unlock real parallelism. Two children running **different models** on the same provider run one after another; two children on *different* providers run at the same time. Set `maxInstances` on a child to run several copies of its *same* model in parallel on one provider.
+> Mix providers to unlock real parallelism. Two Myrmidons running **different models** on the same provider run one after another; two Myrmidons on *different* providers run at the same time. Set `maxInstances` on a Myrmidon to run several copies of its *same* model in parallel on one provider.
 
 ## Meet the Agents
 
 ### 🧠 Titan — The Orchestrator
 
-Titan is the most intelligent agent in the fleet, and by far the slowest and most expensive to run. It never reads a file, runs a search, or writes a line of code if a child can do it instead. Its entire purpose is strategic: decompose the goal, route each task to the best-suited child, gate the quality of what comes back, and synthesize the final result.
+Titan is the most intelligent agent in the fleet, and by far the slowest and most expensive to run. It never reads a file, runs a search, or writes a line of code if a Myrmidon can do it instead. Its entire purpose is strategic: decompose the goal, route each task to the best-suited Myrmidon, gate the quality of what comes back, and synthesize the final result.
 
 <table>
   <tr><td><b>Role</b></td><td><code>Planning, routing, quality-gating, and synthesis</code></td></tr>
@@ -115,9 +118,9 @@ Titan is the most intelligent agent in the fleet, and by far the slowest and mos
   <tr><td><b>Model Guidance</b></td><td>Choose your strongest reasoning model — an expensive frontier model (Opus 5.5, GLM 5.2) or a heavy local model like Nex N2 Pro. Titan needs judgment and instruction-following, not throughput. Slow and expensive is fine — it delegates the slow, token-hungry parts away.</td></tr>
 </table>
 
-### ⚙️ Children — The Fleet
+### ⚙️ Myrmidons — The Fleet
 
-Children are the hands. Each executes a delegated task and reports back concisely — responses to Titan are enforced to a single paragraph, 500 words max, keeping Titan's context lean. Every child declares a `modelType` that shapes how Titan routes work to it:
+Myrmidons are the hands. Each executes a delegated task and reports back concisely — responses to Titan are enforced to a single paragraph, 500 words max, keeping Titan's context lean. Every Myrmidon declares a `modelType` that shapes how Titan routes work to it:
 
 <table>
   <tr>
@@ -132,13 +135,13 @@ Children are the hands. Each executes a delegated task and reports back concisel
 
 <table>
   <tr><td><b>Role</b></td><td><code>Execute delegated tasks and report back concisely</code></td></tr>
-  <tr><td><b>Prompt</b></td><td><a href="src/agents/child.ts"><code>child.ts</code></a></td></tr>
+  <tr><td><b>Prompt</b></td><td><a href="src/agents/myrmidon.ts"><code>myrmidon.ts</code></a></td></tr>
   <tr><td><b>Model Guidance</b></td><td>Choose fast, cost-efficient models. Speed and parallelism usually matter more than raw reasoning power here.</td></tr>
 </table>
 
 ## Configuration
 
-### Child Agent Options
+### Myrmidon Options
 
 | Field | Type | Required | Description |
 |---|---|:---:|---|
@@ -146,9 +149,9 @@ Children are the hands. Each executes a delegated task and reports back concisel
 | `speed` | `number` (1–10) | ✅ | Relative speed rating; higher = faster responses |
 | `intelligence` | `number` (1–10) | ✅ | Reasoning capability rating; higher = better logic |
 | `modelType` | `"dense"` \| `"sparse"` | ✅ | `dense` for logic/reasoning, `sparse` for search/info gathering |
-| `maxInstances` | `number` (≥1) | | Max parallel instances Titan may run for this child. Since instances share the same model (already in the provider's VRAM), they run concurrently on the same provider. Default: `1` |
+| `maxInstances` | `number` (≥1) | | Max parallel instances Titan may run for this Myrmidon. Since instances share the same model (already in the provider's VRAM), they run concurrently on the same provider. Default: `1` |
 | `temperature` | `number` (0–2) | | Sampling temperature (default: `0.1`) |
-| `variant` | `string` | | Model variant name |
+| `variant` | `string` | | Selects a named model variant defined by the provider for this `model` (see [Model variants](#model-variants)). Must match a variant key the provider declares for the model; leave unset to use the model's defaults |
 | `displayName` | `string` | | Friendly name shown in the UI |
 | `provider` | `string` | | Explicit provider name (defaults to the prefix of `model`) |
 
@@ -158,7 +161,7 @@ Children are the hands. Each executes a delegated task and reports back concisel
 |---|---|---|
 | `model` | `string` | Titan's model in `provider/model` format |
 | `temperature` | `number` (0–2) | Sampling temperature (default: `0.1`) |
-| `variant` | `string` | Model variant name |
+| `variant` | `string` | Selects a named model variant defined by the provider for Titan's `model` (see [Model variants](#model-variants)). Must match a variant key the provider declares for the model; leave unset to use the model's defaults |
 | `prompt` | `string` | Inline custom system prompt (replaces the default entirely) |
 
 ### Plugin Options
@@ -166,7 +169,8 @@ Children are the hands. Each executes a delegated task and reports back concisel
 | Field | Type | Description |
 |---|---|---|
 | `titan` | `object` | Titan overrides (see above) |
-| `children` | `array` | The child agent fleet (see above) |
+| `myrmidons` | `array` | The Myrmidon fleet (see above) |
+| `children` | `array` | **Deprecated** alias for `myrmidons`, kept for backwards compatibility. Prefer `myrmidons`; if both are set, `myrmidons` wins |
 | `disabled_tools` | `string[]` | Tool names to disable for the plugin's agents |
 | `backgroundJobs.maxSessionsPerAgent` | `number` (1–10) | Max concurrent sessions per agent (default: `10`) |
 
@@ -178,6 +182,20 @@ Config is loaded in two layers — **project settings override user settings** v
 2. **Project-level** — `.opencode/opencode-distributed-delegation.{json,jsonc}`
 
 Both `.json` and `.jsonc` are supported. JSONC files allow comments (`//`, `/* */`) and `{env:VAR_NAME}` environment variable placeholders.
+
+### Model variants
+
+`variant` (available on both Myrmidons and Titan) selects a **named model preset** that the *provider* defines for a given model — it does **not** change which model runs (that's `model`). Think of it as: `model` picks the model, `variant` picks a named configuration of that model.
+
+How it works in OpenCode:
+
+1. **The provider defines variants.** In your OpenCode provider/model config, a model can declare a `variants` map — a set of named presets (e.g. a reasoning/`thinking` mode, a `fast` mode), each with its own overrides.
+2. **The agent selects one by name.** Setting `variant: "thinking"` on an agent tells OpenCode to run that model using its `thinking` variant.
+
+Notes:
+
+- The value is **not free-form** — it must match a variant key the provider declares for that specific model. If the model has no matching variant, OpenCode has nothing to resolve it against.
+- **Leave `variant` unset** to run the model with its default settings. Most setups don't need it.
 
 ### Custom Prompts
 
@@ -199,9 +217,9 @@ Search locations:
 src/
 ├── index.ts              # Plugin entry — registers agents, hooks, and events
 ├── agents/
-│   ├── index.ts          # Agent factory — creates Titan + N children
-│   ├── titan.ts          # Titan prompt builder with dynamic child descriptions
-│   └── child.ts          # Child agent factory with context-budget constraints
+│   ├── index.ts          # Agent factory — creates Titan + N Myrmidons
+│   ├── titan.ts          # Titan prompt builder with dynamic Myrmidon descriptions
+│   └── myrmidon.ts       # Myrmidon factory with context-budget constraints
 ├── config/
 │   ├── index.ts          # Config exports
 │   ├── schema.ts         # Zod schemas for all config types
@@ -216,7 +234,7 @@ The plugin registers hooks in `src/index.ts` to wire everything into OpenCode:
 
 | Hook | Purpose |
 |------|---------|
-| `agent` | Returns the agents record (Titan + children) for OpenCode to register |
+| `agent` | Returns the agents record (Titan + Myrmidons) for OpenCode to register |
 | `config` | Sets Titan as the default agent and merges plugin agents into the config |
 | `chat.message` | Tracks which agent is active per session |
 | `experimental.chat.system.transform` | Injects the delegation reminder into Titan's prompt at runtime |

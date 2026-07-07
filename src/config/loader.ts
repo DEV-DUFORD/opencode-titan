@@ -89,7 +89,7 @@ function loadConfigFromPath(configPath: string): PluginConfig | null {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(
         `[opencode-distributed-delegation] FATAL: Invalid JSON in ${configPath}: ${msg}` +
-          '\n  Titan will have NO children until this is fixed.',
+          '\n  Titan will have NO Myrmidons until this is fixed.',
       );
       return null;
     }
@@ -98,7 +98,7 @@ function loadConfigFromPath(configPath: string): PluginConfig | null {
     if (!result.success) {
       console.error(
         `[opencode-distributed-delegation] FATAL: Config schema validation failed at ${configPath}:` +
-          '\n  Titan will have NO children until this is fixed.',
+          '\n  Titan will have NO Myrmidons until this is fixed.',
       );
       console.error(result.error.format());
       return null;

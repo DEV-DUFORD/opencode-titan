@@ -1,7 +1,7 @@
-import type { ChildAgentConfig } from '../config';
+import type { MyrmidonConfig } from '../config';
 import type { AgentDefinition } from './titan';
 
-const CHILD_PROMPT_TEMPLATE = `You are a child agent working under Titan, the primary orchestrator.
+const MYRMIDON_PROMPT_TEMPLATE = `You are a Myrmidon working under Titan, the primary orchestrator.
 
 **Your Role**: Execute a single, bounded task delegated by Titan. You are fast and efficient. You must be surgical — do not over-explore.
 
@@ -36,11 +36,11 @@ You are operating with a hard context budget. Exceeding it causes failure. Follo
 </Task>
 `;
 
-export function createChildAgent(
+export function createMyrmidonAgent(
   index: number,
-  config: ChildAgentConfig,
+  config: MyrmidonConfig,
 ): AgentDefinition {
-  const name = `child-${index}`;
+  const name = `myrmidon-${index}`;
 
   // Build model-specific behavioral hints
   const modelTypeHint =
@@ -48,12 +48,12 @@ export function createChildAgent(
       ? 'You are running a dense model — you excel at logic, reasoning, and complex problem-solving. Use this strength for tasks requiring careful analysis.'
       : 'You are running a sparse model — you excel at fast information gathering, broad search, and rapid lookups. Use this strength for research and exploration tasks.';
 
-  const prompt = `${CHILD_PROMPT_TEMPLATE.replace('{{TASK_PROMPT}}', '')}\n\n${modelTypeHint}`;
+  const prompt = `${MYRMIDON_PROMPT_TEMPLATE.replace('{{TASK_PROMPT}}', '')}\n\n${modelTypeHint}`;
 
   return {
     name,
     displayName: config.displayName,
-    description: buildChildDescription(index, config),
+    description: buildMyrmidonDescription(index, config),
     config: {
       model: config.model,
       temperature: config.temperature ?? 0.1,
@@ -64,14 +64,20 @@ export function createChildAgent(
   };
 }
 
-function buildChildDescription(
+/**
+ * @deprecated Use `createMyrmidonAgent`. Retained as a backwards-compatible
+ * alias for the former "child agent" naming.
+ */
+export const createChildAgent = createMyrmidonAgent;
+
+function buildMyrmidonDescription(
   index: number,
-  config: ChildAgentConfig,
+  config: MyrmidonConfig,
 ): string {
   const typeLabel =
     config.modelType === 'dense'
       ? 'logic & reasoning specialist'
       : 'information gathering specialist';
 
-  return `Child agent #${index} (${typeLabel}). Speed: ${config.speed}/10, Intelligence: ${config.intelligence}/10. Model: ${config.model}.`;
+  return `Myrmidon #${index} (${typeLabel}). Speed: ${config.speed}/10, Intelligence: ${config.intelligence}/10. Model: ${config.model}.`;
 }

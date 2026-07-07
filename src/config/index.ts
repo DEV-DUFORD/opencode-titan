@@ -9,5 +9,6 @@ export {
   buildAgentLockInfoMap,
   buildAgentProviderMap,
   resolveChildProvider,
+  resolveMyrmidonProvider,
 } from './providers';
 export * from './schema';
