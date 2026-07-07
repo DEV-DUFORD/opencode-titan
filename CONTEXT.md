@@ -109,8 +109,8 @@ Three Zod schemas define the configuration shape:
 
 Titan's system prompt is dynamically generated per-session based on the configured children fleet. It includes:
 
-- Per-child descriptions with their speed, intelligence, and model type.
-- Provider conflict warnings — children sharing the same provider must run sequentially.
+- Per-child descriptions with their speed, intelligence, model type, and max instances.
+- Provider conflict warnings — children running different models on the same provider must run sequentially; a child with `maxInstances > 1` may self-parallelize (same model, one VRAM load).
 - Capability-based delegation guidance derived from the fleet composition.
 - Full workflow instructions for planning, dispatching, and synthesizing.
 - `DELEGATION_REMINDER` appended at the end to keep Titan in delegation mode.
@@ -124,7 +124,7 @@ Titan's system prompt is dynamically generated per-session based on the configur
 
 ## Design Decisions
 
-1. **Provider-aware scheduling** — Titan knows which children share providers and warns against parallel dispatch to the same provider.
+1. **Provider-aware, model-scoped scheduling** — A provider (physical backend) holds one model in VRAM at a time. The runtime `ProviderLockManager` serializes *different models* on a shared provider, while allowing up to `maxInstances` concurrent instances of the *same* model. Titan is warned about conflicts so it can plan dispatches accordingly.
 2. **Capability-aware delegation** — The prompt includes dynamic guidance based on the fleet's combined capabilities.
 3. **Prompt composition** — Base prompts are replaceable or appendable via `.md` files alongside config directories.
 4. **Serve-mode resilience** — The delegation reminder is injected at runtime via the system transform hook to keep Titan in delegation mode during long sessions.

@@ -35,11 +35,13 @@ export function buildTitanPrompt(children: ChildAgentConfig[]): string {
     .map((child, idx) => {
       const name = `child-${idx}`;
       const provider = resolveProvider(child);
+      const maxInstances = child.maxInstances ?? 1;
       return `<ChildAgent>
 - **Name:** @${name}
 - **subagent_type:** \`"${name}"\` ← use this exact string in task(subagent_type: "${name}", ...)
 - **Model:** ${child.model}
 - **Provider:** ${provider}
+- **Max Instances:** ${maxInstances}${maxInstances > 1 ? ` (you may run up to ${maxInstances} tasks on @${name} AT THE SAME TIME — treat it like ${maxInstances} distinct children)` : ' (single instance — one task at a time)'}
 - **Speed:** ${child.speed}/10 (${child.speed >= 7 ? 'fast' : child.speed >= 4 ? 'moderate' : 'slow'})
 - **Intelligence:** ${child.intelligence}/10 (${child.intelligence >= 7 ? 'strong reasoning' : child.intelligence >= 4 ? 'adequate reasoning' : 'limited reasoning'})
 - **Model Type:** ${child.modelType} (${child.modelType === 'dense' ? 'better at logic, planning, complex problem-solving' : 'better at information gathering, fast lookups, broad search'})
@@ -76,7 +78,11 @@ ${child.displayName ? `- **Display Name:** ${child.displayName}` : ''}
     );
   }
 
-  // Build provider grouping: identify which providers have multiple children
+  // Build provider grouping: identify which providers host multiple children.
+  // A provider is a physical backend that holds ONE model in VRAM at a time,
+  // so DIFFERENT models on the same provider must be serialized. However, a
+  // single child with maxInstances > 1 can run several copies of ITS OWN model
+  // in parallel on that provider (the model is already loaded).
   const providerToChildren = new Map<string, string[]>();
   children.forEach((child, idx) => {
     const p = resolveProvider(child);
@@ -90,7 +96,16 @@ ${child.displayName ? `- **Display Name:** ${child.displayName}` : ''}
     .filter(([, agents]) => agents.length > 1)
     .map(
       ([provider, agents]) =>
-        `- ${provider}: ${agents.join(', ')} — **these must run sequentially**`,
+        `- **${provider}** hosts ${agents.length} DIFFERENT models: ${agents.join(', ')}. You may dispatch to AT MOST ONE of these per turn. Dispatching two or more of them "in parallel" does NOT parallelize — the runtime force-serializes them (the second waits for the first to fully finish), so you gain nothing and stall your fleet. Pick exactly one; send the other's work to a child on a DIFFERENT provider instead.`,
+    );
+
+  // Children that can be parallelized against themselves.
+  const selfParallelChildren = children
+    .map((child, idx) => ({ child, idx }))
+    .filter(({ child }) => (child.maxInstances ?? 1) > 1)
+    .map(
+      ({ child, idx }) =>
+        `- @child-${idx}: up to ${child.maxInstances} instances in parallel (same model on ${resolveProvider(child)} — safe to load once, run many)`,
     );
 
   return `<Role>
@@ -104,7 +119,9 @@ You have ${children.length} child agents available:
 
 ${childDescriptions}
 
-${sharedProviders.length > 0 ? `\n**Provider conflict warnings (cannot run these in parallel):**\n${sharedProviders.join('\n')}` : ''}
+${sharedProviders.length > 0 ? `\n**⚠️ PROVIDER CONFLICTS — READ BEFORE EVERY DISPATCH ⚠️**\nEach line below is a group of mutually-exclusive children that share one physical backend. Only one model fits in that backend's VRAM at a time. Treat each group as a "pick at most ONE per turn" constraint:\n${sharedProviders.join('\n')}\n\nBefore you emit a batch of task() calls, scan your chosen children against these groups. If your batch contains two children from the same group, it is WRONG — drop one and replace it with a child on a free provider (or defer that work to a later turn).` : ''}
+
+${selfParallelChildren.length > 0 ? `**Self-parallel children (same model, safe to run multiple copies at once):**\n${selfParallelChildren.join('\n')}` : ''}
 
 </Role>
 
@@ -134,7 +151,14 @@ Examples:
 Identify idle children before acting on anything yourself.
 
 ### Provider Constraint
-Do NOT dispatch parallel tasks to children that share the same provider. Each provider can only handle one child session at a time. If two children have the same provider, run their tasks sequentially — wait for one to complete before starting the other on that provider.
+A provider is a physical backend that can hold only ONE model in VRAM at a time. This drives two rules:
+
+1. **Different models on the same provider CANNOT run in parallel — ever.** If two children share a provider (different models), you may dispatch to only ONE of them per turn. Dispatching both in the same batch does NOT run them concurrently: the runtime force-serializes them, so the second silently waits for the first to finish. You get zero parallelism AND you've wasted a dispatch slot you could have given to a genuinely-free child. Always check the "PROVIDER CONFLICTS" groups above before batching.
+2. **The same model on a provider CAN run in parallel.** A child with **Max Instances > 1** may receive that many task() calls AT ONCE — the model is already loaded, so extra instances cost nothing. Treat such a child as if it were N distinct children: issue up to N task(subagent_type: "child-K", ...) calls for it in the SAME response.
+
+**Mandatory pre-dispatch self-check:** Before emitting a batch of task() calls, list the children you're about to use and confirm no two of them belong to the same provider-conflict group. If two do, replace one with a child on a different (free) provider, or move its work to a later turn. Real parallelism only happens across distinct providers (plus same-model instances). Two children on one backend = sequential, no matter how you dispatch them.
+
+Example: providers A and B, where @child-0 (provider A, maxInstances=2), @child-1 (provider A), @child-2 (provider B). To split work into 3 parallel tasks, dispatch TWO tasks to @child-0 (its 2 instances) plus ONE task to @child-2 — all in one response. Do NOT also dispatch @child-1, because it's a different model on provider A and would collide with @child-0's VRAM (it would just queue behind @child-0).
 
 ## Matching Tasks to Children
 ${capabilityGuidance.join('\n')}

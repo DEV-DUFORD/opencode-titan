@@ -29,3 +29,35 @@ export function buildAgentProviderMap(
   });
   return map;
 }
+
+/**
+ * Runtime lock metadata for a child agent.
+ *
+ * `provider` is the physical backend; `model` identifies what is loaded into
+ * that backend's VRAM. Multiple instances of the *same* model may run
+ * concurrently on a provider (up to `maxInstances`), but different models on the
+ * same provider must be serialized.
+ */
+export interface AgentLockInfo {
+  provider: string;
+  model: string;
+  maxInstances: number;
+}
+
+/**
+ * Build a map from child agent name to the lock metadata used to enforce the
+ * per-provider, per-model concurrency constraint at runtime.
+ */
+export function buildAgentLockInfoMap(
+  children: ChildAgentConfig[],
+): Map<string, AgentLockInfo> {
+  const map = new Map<string, AgentLockInfo>();
+  children.forEach((child, idx) => {
+    map.set(`child-${idx}`, {
+      provider: resolveChildProvider(child),
+      model: child.model,
+      maxInstances: child.maxInstances ?? 1,
+    });
+  });
+  return map;
+}

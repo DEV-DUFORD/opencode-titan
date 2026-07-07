@@ -18,6 +18,10 @@ export const ChildAgentConfigSchema = z
     speed: z.number().int().min(1).max(10),
     intelligence: z.number().int().min(1).max(10),
     modelType: ModelTypeSchema,
+    // Maximum number of parallel instances Titan may run for this child.
+    // Because instances share the same model (already loaded in the provider's
+    // VRAM), they can run concurrently on the same provider. Defaults to 1.
+    maxInstances: z.number().int().min(1).optional(),
     temperature: z.number().min(0).max(2).optional(),
     variant: z.string().optional(),
     displayName: z.string().min(1).optional(),

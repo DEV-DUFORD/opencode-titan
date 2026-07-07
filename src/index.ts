@@ -1,7 +1,8 @@
 import type { Plugin } from '@opencode-ai/plugin';
 import { createAgents, getAgentConfigs } from './agents';
 import {
-  buildAgentProviderMap,
+  type AgentLockInfo,
+  buildAgentLockInfoMap,
   loadPluginConfig,
   TITAN_AGENT_NAME,
 } from './config';
@@ -20,10 +21,11 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
   let agents: ReturnType<typeof getAgentConfigs>;
   let agentDefs: ReturnType<typeof createAgents>;
   let sessionAgentMap: Map<string, string>;
-  // Runtime enforcement of the `provider` constraint: serialize child agents
-  // that share a provider so only one runs on a given backend at a time.
+  // Runtime enforcement of the provider constraint: serialize *different
+  // models* that share a provider, while allowing up to `maxInstances`
+  // concurrent instances of the *same* model (already resident in VRAM).
   let providerLocks: ProviderLockManager;
-  let agentProviderMap: Map<string, string>;
+  let agentLockInfoMap: Map<string, AgentLockInfo>;
 
   try {
     config = loadPluginConfig(ctx.directory);
@@ -31,7 +33,7 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
     agents = getAgentConfigs(config, { projectDirectory: ctx.directory });
     sessionAgentMap = new Map<string, string>();
     providerLocks = new ProviderLockManager();
-    agentProviderMap = buildAgentProviderMap(config.children ?? []);
+    agentLockInfoMap = buildAgentLockInfoMap(config.children ?? []);
   } catch (err) {
     console.error(
       `[opencode-distributed-delegation] FATAL: init failed: ${err}`,
@@ -71,12 +73,13 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
 
     agent: agents,
 
-    // Enforce the `provider` constraint at runtime. A child agent's provider
-    // represents the physical backend serving its model; when several children
-    // share a provider only one can be active at a time (e.g. limited VRAM).
-    // Acquiring a per-provider lock before the subagent starts, and releasing it
-    // after it finishes, serializes same-provider children even when Titan
-    // dispatches them "in parallel".
+    // Enforce the provider constraint at runtime. A child agent's provider
+    // represents the physical backend serving its model; a backend can only
+    // hold ONE model in VRAM at a time. So different models on the same
+    // provider are serialized, while up to `maxInstances` instances of the SAME
+    // model may run concurrently. Acquiring a per-provider, model-aware slot
+    // before the subagent starts and releasing it after enforces this even when
+    // Titan dispatches tasks "in parallel".
     'tool.execute.before': async (
       input: { tool: string; sessionID: string; callID: string },
       output: { args: unknown },
@@ -87,14 +90,19 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
       const subagentType = args?.subagent_type;
       if (!subagentType) return;
 
-      const provider = agentProviderMap.get(subagentType);
-      if (!provider) return; // Unknown/unmanaged agent — don't gate it.
+      const lockInfo = agentLockInfoMap.get(subagentType);
+      if (!lockInfo) return; // Unknown/unmanaged agent — don't gate it.
+      const { provider, model, maxInstances } = lockInfo;
 
       const key = lockKey(input.sessionID, input.callID);
       // Guard against re-entrant hook invocation for the same call.
       if (heldLocks.has(key)) return;
 
-      const release = await providerLocks.acquire(provider);
+      const release = await providerLocks.acquire(
+        provider,
+        model,
+        maxInstances,
+      );
       const timer = setTimeout(() => {
         if (heldLocks.has(key)) {
           console.warn(

@@ -24,7 +24,7 @@ To meet the agents, jump to **[Meet the Agents](#meet-the-agents)**. For setup, 
 The plugin builds a two-tier hierarchy of agents:
 
 - **Titan** dispatches all independent tasks to children **in parallel** within a single response turn.
-- **Children** share model providers, so children on the same provider are scheduled sequentially. The plugin automatically detects provider conflicts and warns Titan so it can plan around them.
+- **Children** share model providers, so children running **different models** on the same provider are scheduled sequentially — a provider (physical backend) holds only one model in VRAM at a time. A child with `maxInstances > 1` is the exception: multiple instances of its *same* model run in parallel on that provider. The plugin detects provider conflicts and warns Titan so it can plan around them.
 - Titan **never** performs work a child can handle — it plans, routes, quality-gates, and synthesizes results.
 
 > [!TIP]
@@ -101,7 +101,7 @@ Here's a complete starting configuration:
 ```
 
 > [!TIP]
-> Mix providers to unlock real parallelism. Two children on the same provider run one after another; two children on *different* providers run at the same time.
+> Mix providers to unlock real parallelism. Two children running **different models** on the same provider run one after another; two children on *different* providers run at the same time. Set `maxInstances` on a child to run several copies of its *same* model in parallel on one provider.
 
 ## Meet the Agents
 
@@ -146,6 +146,7 @@ Children are the hands. Each executes a delegated task and reports back concisel
 | `speed` | `number` (1–10) | ✅ | Relative speed rating; higher = faster responses |
 | `intelligence` | `number` (1–10) | ✅ | Reasoning capability rating; higher = better logic |
 | `modelType` | `"dense"` \| `"sparse"` | ✅ | `dense` for logic/reasoning, `sparse` for search/info gathering |
+| `maxInstances` | `number` (≥1) | | Max parallel instances Titan may run for this child. Since instances share the same model (already in the provider's VRAM), they run concurrently on the same provider. Default: `1` |
 | `temperature` | `number` (0–2) | | Sampling temperature (default: `0.1`) |
 | `variant` | `string` | | Model variant name |
 | `displayName` | `string` | | Friendly name shown in the UI |
@@ -208,7 +209,7 @@ src/
 │   ├── providers.ts      # Provider resolution helpers
 │   └── constants.ts      # Agent names, delegation reminders
 └── utils/
-    └── provider-lock.ts  # Provider-conflict detection for scheduling
+    └── provider-lock.ts  # Model-scoped per-provider scheduling lock
 ```
 
 The plugin registers hooks in `src/index.ts` to wire everything into OpenCode:

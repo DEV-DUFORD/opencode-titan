@@ -53,6 +53,11 @@
             "enum": ["dense", "sparse"],
             "description": "Model architecture type. 'dense' = slower but better at logic and complex reasoning. 'sparse' = faster, better at information gathering and broad search."
           },
+          "maxInstances": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum number of parallel instances Titan may run for this child. Since instances share the same model (already loaded in the provider's VRAM), they can run concurrently on the same provider. Defaults to 1."
+          },
           "temperature": {
             "type": "number",
             "minimum": 0,

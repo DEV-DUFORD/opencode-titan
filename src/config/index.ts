@@ -4,5 +4,10 @@ export {
   loadAgentPrompt,
   loadPluginConfig,
 } from './loader';
-export { buildAgentProviderMap, resolveChildProvider } from './providers';
+export type { AgentLockInfo } from './providers';
+export {
+  buildAgentLockInfoMap,
+  buildAgentProviderMap,
+  resolveChildProvider,
+} from './providers';
 export * from './schema';
