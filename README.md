@@ -147,7 +147,7 @@ Titan is the most intelligent agent in the fleet, and by far the slowest and mos
 
 ### ⚙️ Myrmidons — The Fleet
 
-Myrmidons are the hands. Each executes a delegated task and reports back concisely — responses to Titan are enforced to a single paragraph, 500 words max, keeping Titan's context lean. Every Myrmidon declares a `modelType` that shapes how Titan routes work to it:
+Myrmidons are the hands. Each executes a delegated task and reports back concisely — responses to Titan are enforced to a single paragraph, 1000 words max by default (configurable via `maxResponseWords`), keeping Titan's context lean. Every Myrmidon declares a `modelType` that shapes how Titan routes work to it:
 
 <table>
   <tr>
@@ -199,6 +199,7 @@ Myrmidons are the hands. Each executes a delegated task and reports back concise
 | `myrmidons` | `array` | The Myrmidon fleet (see above) |
 | `children` | `array` | **Deprecated** alias for `myrmidons`, kept for backwards compatibility. Prefer `myrmidons`; if both are set, `myrmidons` wins |
 | `disabled_tools` | `string[]` | Tool names to disable for the plugin's agents |
+| `maxResponseWords` | `number` (≥1) | Max word count enforced on each Myrmidon's one-paragraph response to Titan (default: `1000`) |
 | `backgroundJobs.maxSessionsPerAgent` | `number` (1–10) | Max concurrent sessions per agent (default: `10`) |
 
 ### Config Locations

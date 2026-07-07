@@ -7,7 +7,7 @@ A distributed delegation plugin for OpenCode (v1.3.x) that implements a "Titan" 
 The plugin is built on a simple philosophy: **parallelize aggressively, delegate everything, never poll running jobs.**
 
 - **Titan** — The primary agent. Most intelligent but borderline unusably slow. Its ONLY job is planning, routing, quality-gating, and synthesizing results from Myrmidons. It NEVER does work a Myrmidon can handle.
-- **Myrmidons** — N configurable worker agents, each with `speed` (1-10), `intelligence` (1-10), and `modelType` (`dense` | `sparse`). They execute delegated tasks and report back concisely (enforced 1-paragraph, 500-word max responses). Configured via the `myrmidons` key (the legacy `children` key remains a deprecated alias).
+- **Myrmidons** — N configurable worker agents, each with `speed` (1-10), `intelligence` (1-10), and `modelType` (`dense` | `sparse`). They execute delegated tasks and report back concisely (enforced 1-paragraph responses, capped at `maxResponseWords`, default 1000). Configured via the `myrmidons` key (the legacy `children` key remains a deprecated alias).
 
 ## Architecture
 
@@ -79,6 +79,7 @@ Users configure the plugin via `opencode-titan.jsonc`:
     }
   ],
   "disabled_tools": ["tool1", "tool2"],
+  "maxResponseWords": 1000,
   "backgroundJobs": {
     "maxSessionsPerAgent": 3
   }
@@ -118,7 +119,7 @@ Titan's system prompt is dynamically generated per-session based on the configur
 ### Myrmidons (`src/agents/myrmidon.ts`)
 
 - Named `myrmidon-{index}` (also registered under the deprecated `child-{index}` alias for backwards compatibility).
-- Responses to Titan are enforced to a single paragraph, maximum 500 words.
+- Responses to Titan are enforced to a single paragraph, maximum 1000 words by default (configurable via the top-level `maxResponseWords` config key).
 - Model-type-specific behavioral hints: `dense` models are guided toward logic and reasoning tasks; `sparse` models toward information gathering and search.
 - Temperature defaults to 0.1.
 

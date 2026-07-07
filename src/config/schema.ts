@@ -63,6 +63,9 @@ export const PluginConfigSchema = z.object({
   // Deprecated alias for `myrmidons`, retained for backwards compatibility.
   // If both are present, `myrmidons` takes precedence.
   children: z.array(MyrmidonConfigSchema).optional(),
+  // Maximum word count enforced on each Myrmidon's final response to Titan.
+  // Keeps Titan's context lean. Defaults to DEFAULT_MAX_RESPONSE_WORDS (1000).
+  maxResponseWords: z.number().int().min(1).optional(),
   disabled_tools: z.array(z.string()).optional(),
   backgroundJobs: z
     .object({

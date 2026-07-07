@@ -1,5 +1,11 @@
 export const TITAN_AGENT_NAME = 'titan' as const;
 
+/**
+ * Default maximum word count enforced on a Myrmidon's final response to Titan.
+ * Overridable via the `maxResponseWords` plugin config key.
+ */
+export const DEFAULT_MAX_RESPONSE_WORDS = 1000 as const;
+
 export const ALL_AGENT_NAMES = [TITAN_AGENT_NAME] as const;
 export type AgentName = (typeof ALL_AGENT_NAMES)[number];
 

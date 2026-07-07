@@ -41,6 +41,12 @@
         "$ref": "#/$defs/myrmidon"
       }
     },
+    "maxResponseWords": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1000,
+      "description": "Maximum word count enforced on each Myrmidon's final (one-paragraph) response to Titan. Keeps Titan's context lean. Defaults to 1000."
+    },
     "disabled_tools": {
       "type": "array",
       "description": "Tool names to disable completely. Disabled tools are not registered with OpenCode.",

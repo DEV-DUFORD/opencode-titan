@@ -1,6 +1,10 @@
 import type { AgentConfig } from '@opencode-ai/sdk/v2';
 import type { MyrmidonConfig } from '../config';
-import { DELEGATION_REMINDER, resolveMyrmidonProvider } from '../config';
+import {
+  DEFAULT_MAX_RESPONSE_WORDS,
+  DELEGATION_REMINDER,
+  resolveMyrmidonProvider,
+} from '../config';
 
 export interface AgentDefinition {
   name: string;
@@ -26,7 +30,10 @@ export function resolvePrompt(
 /**
  * Build the Titan prompt with Myrmidon descriptions dynamically injected.
  */
-export function buildTitanPrompt(myrmidons: MyrmidonConfig[]): string {
+export function buildTitanPrompt(
+  myrmidons: MyrmidonConfig[],
+  maxResponseWords: number = DEFAULT_MAX_RESPONSE_WORDS,
+): string {
   // Build Myrmidon descriptions for the prompt.
   // Derive provider from config or fall back to the model string prefix.
   const resolveProvider = resolveMyrmidonProvider;
@@ -236,7 +243,7 @@ When delegating to a Myrmidon:
 - Be specific about the task and expected output format
 - Reference file paths/lines, don't paste full contents
 - Set clear boundaries: what to do and what not to do
-- Tell the Myrmidon to report back concisely (one paragraph, under 500 words max)
+- Tell the Myrmidon to report back concisely (one paragraph, under ${maxResponseWords} words max)
 </CommunicationWithMyrmidons>
 
 ${DELEGATION_REMINDER}
@@ -248,8 +255,9 @@ export function createTitanAgent(
   model?: string,
   customPrompt?: string,
   customAppendPrompt?: string,
+  maxResponseWords: number = DEFAULT_MAX_RESPONSE_WORDS,
 ): AgentDefinition {
-  const basePrompt = buildTitanPrompt(myrmidons);
+  const basePrompt = buildTitanPrompt(myrmidons, maxResponseWords);
   const prompt = resolvePrompt(basePrompt, customPrompt, customAppendPrompt);
 
   const definition: AgentDefinition = {

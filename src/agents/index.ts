@@ -1,5 +1,6 @@
 import type { AgentConfig as SDKAgentConfig } from '@opencode-ai/sdk/v2';
 import {
+  DEFAULT_MAX_RESPONSE_WORDS,
   getMyrmidonConfigs,
   loadAgentPrompt,
   type PluginConfig,
@@ -20,6 +21,8 @@ export function createAgents(
   options?: { projectDirectory?: string },
 ): AgentDefinition[] {
   const myrmidons = getMyrmidonConfigs(config);
+  const maxResponseWords =
+    config?.maxResponseWords ?? DEFAULT_MAX_RESPONSE_WORDS;
 
   // Resolve Titan model
   const titanModel = config?.titan?.model;
@@ -35,6 +38,7 @@ export function createAgents(
     typeof titanModel === 'string' ? titanModel : undefined,
     config?.titan?.prompt,
     undefined,
+    maxResponseWords,
   );
 
   // Apply custom prompts
@@ -56,7 +60,7 @@ export function createAgents(
 
   // Create Myrmidons (canonical `myrmidon-N`)
   const myrmidonAgents = myrmidons.map((myrmidonConfig, idx) =>
-    createMyrmidonAgent(idx, myrmidonConfig),
+    createMyrmidonAgent(idx, myrmidonConfig, maxResponseWords),
   );
 
   // Register deprecated `child-N` aliases pointing to the same config so old

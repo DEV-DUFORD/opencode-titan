@@ -1,4 +1,4 @@
-import type { MyrmidonConfig } from '../config';
+import { DEFAULT_MAX_RESPONSE_WORDS, type MyrmidonConfig } from '../config';
 import type { AgentDefinition } from './titan';
 
 const MYRMIDON_PROMPT_TEMPLATE = `You are a Myrmidon working under Titan, the primary orchestrator.
@@ -18,7 +18,7 @@ You are operating with a hard context budget. Exceeding it causes failure. Follo
 </ContextBudget>
 
 <OutputConstraints>
-- **CRITICAL: Your final response to Titan MUST be ONE PARAGRAPH, no more than 500 words.**
+- **CRITICAL: Your final response to Titan MUST be ONE PARAGRAPH, no more than {{MAX_WORDS}} words.**
 - No preamble, no summary of what you did — just the results.
 - Report success/failure clearly in your first sentence.
 - Include only actionable details: file paths, line numbers, errors, generated code snippets.
@@ -39,6 +39,7 @@ You are operating with a hard context budget. Exceeding it causes failure. Follo
 export function createMyrmidonAgent(
   index: number,
   config: MyrmidonConfig,
+  maxResponseWords: number = DEFAULT_MAX_RESPONSE_WORDS,
 ): AgentDefinition {
   const name = `myrmidon-${index}`;
 
@@ -48,7 +49,11 @@ export function createMyrmidonAgent(
       ? 'You are running a dense model — you excel at logic, reasoning, and complex problem-solving. Use this strength for tasks requiring careful analysis.'
       : 'You are running a sparse model — you excel at fast information gathering, broad search, and rapid lookups. Use this strength for research and exploration tasks.';
 
-  const prompt = `${MYRMIDON_PROMPT_TEMPLATE.replace('{{TASK_PROMPT}}', '')}\n\n${modelTypeHint}`;
+  const template = MYRMIDON_PROMPT_TEMPLATE.replace(
+    '{{MAX_WORDS}}',
+    String(maxResponseWords),
+  );
+  const prompt = `${template.replace('{{TASK_PROMPT}}', '')}\n\n${modelTypeHint}`;
 
   return {
     name,
