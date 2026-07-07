@@ -1,5 +1,5 @@
 <div align="center">
-  <h3>⚡ opencode-distributed-delegation ⚡</h3>
+  <h3>⚡ opencode-titan ⚡</h3>
 
   <p><i>One mind that never touches the keyboard. A fleet of hands that never stops moving.<br>Plan with the slow genius, and let the fast ones build in parallel.</i></p>
 
@@ -11,7 +11,7 @@
 
 ## What's This Plugin
 
-`opencode-distributed-delegation` is an agent-orchestration plugin for [OpenCode](https://github.com/sst/opencode). It introduces a **Titan orchestrator** — your most capable (and slowest) model — whose only job is to think, plan, and route. Every piece of executable work is handed off to a fleet of faster **child agents** that run in parallel.
+`opencode-titan` is an agent-orchestration plugin for [OpenCode](https://github.com/sst/opencode). It introduces a **Titan orchestrator** — your most capable (and slowest) model — whose only job is to think, plan, and route. Every piece of executable work is handed off to a fleet of faster **child agents** that run in parallel.
 
 The core idea is simple: **your smartest model is often your slowest one.** Instead of letting it grind through file reads, searches, and edits, Titan spends its expensive inference budget on planning and synthesis, while cheaper, faster children do the legwork simultaneously.
 
@@ -38,8 +38,8 @@ The plugin builds a two-tier hierarchy of agents:
 **1. Clone and build the plugin:**
 
 ```bash
-git clone https://github.com/DEV-DUFORD/opencode-distributed-delegation.git
-cd opencode-distributed-delegation
+git clone https://github.com/DEV-DUFORD/opencode-titan.git
+cd opencode-titan
 bun install
 bun run build
 ```
@@ -53,7 +53,7 @@ OpenCode treats any plugin entry starting with `.`, `file://`, or an absolute pa
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["/absolute/path/to/opencode-distributed-delegation"]
+  "plugin": ["/absolute/path/to/opencode-titan"]
 }
 ```
 
