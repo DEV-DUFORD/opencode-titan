@@ -1,7 +1,7 @@
 <div align="center">
   <h3>⚡ opencode-titan ⚡</h3>
 
-  <p><i>One mind that never touches the keyboard. A fleet of hands that never stops moving.<br>Plan with the slow genius, and let the fast ones build in parallel.</i></p>
+  <p><i>One mind that never touches the keyboard. A fleet of hands that never stops moving.<br>Plan with the slow, expensive genius, and let the fast ones build in parallel.</i></p>
 
   <p><b>OpenCode Orchestration Plugin</b> · Mix any models · Delegate everything · Run in parallel</p>
 
@@ -11,9 +11,9 @@
 
 ## What's This Plugin
 
-`opencode-titan` is an agent-orchestration plugin for [OpenCode](https://github.com/sst/opencode). It introduces a **Titan orchestrator** — your most capable (and slowest) model — whose only job is to think, plan, and route. Every piece of executable work is handed off to a fleet of faster **child agents** that run in parallel.
+`opencode-titan` is an agent-orchestration plugin for [OpenCode](https://github.com/sst/opencode). It introduces a **Titan orchestrator** — your most capable (and slowest, most expensive) model — whose only job is to think, plan, and route. Every piece of executable work is handed off to a fleet of faster **child agents** that run in parallel.
 
-The core idea is simple: **your smartest model is often your slowest one.** Instead of letting it grind through file reads, searches, and edits, Titan spends its expensive inference budget on planning and synthesis, while cheaper, faster children do the legwork simultaneously.
+The core idea is simple: **your smartest model is often your slowest and most expensive one.** Titan is meant to be a frontier heavyweight — something like Opus 5.5, GLM 5.2, or a beast like Nex N2 Pro running on local hardware: far slower and pricier than a typical local model, but far smarter. Instead of letting a model like that grind through file reads, searches, and edits — burning tokens and wall-clock time on grunt work — Titan spends its expensive inference budget only on planning and synthesis, while cheaper, faster children do the legwork simultaneously.
 
 The result is a workflow that balances **quality, speed, and cost** — deep reasoning where it matters, raw throughput everywhere else.
 
@@ -63,7 +63,7 @@ Restart OpenCode and Titan becomes your default agent.
 
 1. **Create your plugin config** at `~/.config/opencode/opencode-distributed-delegation.jsonc`
 
-2. **Pick your Titan** — the smartest model you have, even if it's slow.
+2. **Pick your Titan** — the smartest model you have, even if it's slow and expensive (think Opus 5.5, GLM 5.2, or Nex N2 Pro on local hardware).
 
 3. **Assemble your fleet** — one or more children, each rated for `speed`, `intelligence`, and `modelType`.
 
@@ -74,7 +74,7 @@ Here's a complete starting configuration:
 ```jsonc
 {
   // Optional: override Titan's model and settings.
-  // Titan should be your most capable model, even if it's slow.
+  // Titan should be your most capable model, even if it's slow and expensive.
   "titan": {
     "model": "anthropic/claude-sonnet-4-20250514",
     "temperature": 0.1
@@ -107,12 +107,12 @@ Here's a complete starting configuration:
 
 ### 🧠 Titan — The Orchestrator
 
-Titan is the most intelligent agent in the fleet, and by far the slowest. It never reads a file, runs a search, or writes a line of code if a child can do it instead. Its entire purpose is strategic: decompose the goal, route each task to the best-suited child, gate the quality of what comes back, and synthesize the final result.
+Titan is the most intelligent agent in the fleet, and by far the slowest and most expensive to run. It never reads a file, runs a search, or writes a line of code if a child can do it instead. Its entire purpose is strategic: decompose the goal, route each task to the best-suited child, gate the quality of what comes back, and synthesize the final result.
 
 <table>
   <tr><td><b>Role</b></td><td><code>Planning, routing, quality-gating, and synthesis</code></td></tr>
   <tr><td><b>Prompt</b></td><td><a href="src/agents/titan.ts"><code>titan.ts</code></a> — dynamically built from your fleet</td></tr>
-  <tr><td><b>Model Guidance</b></td><td>Choose your strongest reasoning model. Titan needs judgment and instruction-following, not throughput. Slow is fine — it delegates the slow parts away.</td></tr>
+  <tr><td><b>Model Guidance</b></td><td>Choose your strongest reasoning model — an expensive frontier model (Opus 5.5, GLM 5.2) or a heavy local model like Nex N2 Pro. Titan needs judgment and instruction-following, not throughput. Slow and expensive is fine — it delegates the slow, token-hungry parts away.</td></tr>
 </table>
 
 ### ⚙️ Children — The Fleet
