@@ -1,5 +1,5 @@
 {
-  "name": "opencode-distributed-delegation",
+  "name": "opencode-titan",
   "version": "0.1.0",
   "description": "Distributed delegation plugin for OpenCode — Titan orchestrator with parallel Myrmidons",
   "main": "dist/index.js",
@@ -12,6 +12,18 @@
   },
   "type": "module",
   "license": "MIT",
+  "author": "Zack Duford <z.duford@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DEV-DUFORD/opencode-titan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DEV-DUFORD/opencode-titan/issues"
+  },
+  "homepage": "https://github.com/DEV-DUFORD/opencode-titan#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "opencode",
     "opencode-plugin",
@@ -22,7 +34,8 @@
   ],
   "files": [
     "dist",
-    "opencode-distributed-delegation.schema.json",
+    "!dist/meta.json",
+    "opencode-titan.schema.json",
     "README.md",
     "LICENSE"
   ],

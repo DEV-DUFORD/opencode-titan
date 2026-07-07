@@ -115,6 +115,6 @@
       "additionalProperties": false
     }
   },
-  "title": "opencode-distributed-delegation",
-  "description": "Configuration schema for opencode-distributed-delegation plugin — Titan orchestrator with parallel Myrmidons"
+  "title": "opencode-titan",
+  "description": "Configuration schema for opencode-titan plugin — Titan orchestrator with parallel Myrmidons"
 }

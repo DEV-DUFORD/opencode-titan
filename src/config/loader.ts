@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { type PluginConfig, PluginConfigSchema } from './schema';
 
-const PROMPTS_DIR_NAME = 'opencode-distributed-delegation';
+const PROMPTS_DIR_NAME = 'opencode-titan';
 
 function stripJsonComments(content: string): string {
   let inString = false;
@@ -88,7 +88,7 @@ function loadConfigFromPath(configPath: string): PluginConfig | null {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(
-        `[opencode-distributed-delegation] FATAL: Invalid JSON in ${configPath}: ${msg}` +
+        `[opencode-titan] FATAL: Invalid JSON in ${configPath}: ${msg}` +
           '\n  Titan will have NO Myrmidons until this is fixed.',
       );
       return null;
@@ -97,7 +97,7 @@ function loadConfigFromPath(configPath: string): PluginConfig | null {
     const result = PluginConfigSchema.safeParse(rawConfig);
     if (!result.success) {
       console.error(
-        `[opencode-distributed-delegation] FATAL: Config schema validation failed at ${configPath}:` +
+        `[opencode-titan] FATAL: Config schema validation failed at ${configPath}:` +
           '\n  Titan will have NO Myrmidons until this is fixed.',
       );
       console.error(result.error.format());
@@ -112,7 +112,7 @@ function loadConfigFromPath(configPath: string): PluginConfig | null {
       (error as NodeJS.ErrnoException).code !== 'ENOENT'
     ) {
       console.warn(
-        `[opencode-distributed-delegation] Error reading config from ${configPath}:`,
+        `[opencode-titan] Error reading config from ${configPath}:`,
         error.message,
       );
     }
@@ -162,13 +162,13 @@ export function findPluginConfigPaths(directory: string): {
 } {
   const userConfigPath = findConfigPathInDirs(
     getConfigSearchDirs(),
-    'opencode-distributed-delegation',
+    'opencode-titan',
   );
 
   const projectConfigBasePath = path.join(
     directory,
     '.opencode',
-    'opencode-distributed-delegation',
+    'opencode-titan',
   );
   const projectConfigPath = findConfigPath(projectConfigBasePath);
 

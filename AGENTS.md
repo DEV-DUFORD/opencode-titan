@@ -4,7 +4,7 @@ This document provides guidelines for AI agents operating in this repository.
 
 ## Project Overview
 
-**opencode-distributed-delegation** — A distributed delegation plugin for OpenCode. Features a "Titan" orchestrator agent that delegates all executable work to faster Myrmidons, maximizing parallelism and minimizing Titan's slow inference time.
+**opencode-titan** — A distributed delegation plugin for OpenCode. Features a "Titan" orchestrator agent that delegates all executable work to faster Myrmidons, maximizing parallelism and minimizing Titan's slow inference time.
 
 ## Architecture
 
@@ -34,7 +34,7 @@ This document provides guidelines for AI agents operating in this repository.
 ## Project Structure
 
 ```
-opencode-distributed-delegation/
+opencode-titan/
 ├── src/
 │   ├── index.ts           # Main plugin entry point
 │   ├── agents/
@@ -46,7 +46,7 @@ opencode-distributed-delegation/
 │   │   ├── schema.ts      # Zod schemas (PluginConfig, MyrmidonConfig)
 │   │   ├── loader.ts      # Config loading (user + project)
 │   │   └── constants.ts   # Agent names, reminders
-├── opencode-distributed-delegation.schema.json  # JSON schema for config
+├── opencode-titan.schema.json  # JSON schema for config
 ├── package.json
 ├── tsconfig.json
 └── biome.json
@@ -61,7 +61,7 @@ opencode-distributed-delegation/
 
 ## Config File Format
 
-Users configure the plugin via `opencode-distributed-delegation.jsonc` in their OpenCode config directory:
+Users configure the plugin via `opencode-titan.jsonc` in their OpenCode config directory:
 
 ```jsonc
 {

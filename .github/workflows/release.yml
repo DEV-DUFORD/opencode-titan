@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write # Required for npm trusted publishing (OIDC)
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Update npm (trusted publishing requires >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify package.json version matches release tag
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          TAG="${GITHUB_REF_NAME}"
+          echo "package.json: $PKG_VERSION | release tag: $TAG"
+          if [ "$PKG_VERSION" != "$TAG" ]; then
+            echo "::error::Version mismatch: package.json is $PKG_VERSION but release tag is $TAG"
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to npm
+        run: npm publish

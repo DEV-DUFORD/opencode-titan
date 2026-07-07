@@ -61,7 +61,7 @@ Restart OpenCode and Titan becomes your default agent.
 
 ## Getting Started
 
-1. **Create your plugin config** at `~/.config/opencode/opencode-distributed-delegation.jsonc`
+1. **Create your plugin config** at `~/.config/opencode/opencode-titan.jsonc`
 
 2. **Pick your Titan** — the smartest model you have, even if it's slow and expensive (think Opus 5.5, GLM 5.2, or Nex N2 Pro on local hardware).
 
@@ -179,7 +179,7 @@ Myrmidons are the hands. Each executes a delegated task and reports back concise
 Config is loaded in two layers — **project settings override user settings** via deep merge:
 
 1. **User-level** — searched in `$XDG_CONFIG_HOME/opencode/`, `~/.config/opencode/`, then `~/.opencode/`
-2. **Project-level** — `.opencode/opencode-distributed-delegation.{json,jsonc}`
+2. **Project-level** — `.opencode/opencode-titan.{json,jsonc}`
 
 Both `.json` and `.jsonc` are supported. JSONC files allow comments (`//`, `/* */`) and `{env:VAR_NAME}` environment variable placeholders.
 
@@ -208,8 +208,8 @@ Drop prompt files alongside your config to override or extend an agent's system 
 
 Search locations:
 
-- **User-level:** `~/.config/opencode/opencode-distributed-delegation/titan.md`
-- **Project-level:** `.opencode/opencode-distributed-delegation/titan.md`
+- **User-level:** `~/.config/opencode/opencode-titan/titan.md`
+- **Project-level:** `.opencode/opencode-titan/titan.md`
 
 ## Architecture
 

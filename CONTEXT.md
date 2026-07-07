@@ -1,4 +1,4 @@
-# opencode-distributed-delegation
+# opencode-titan
 
 A distributed delegation plugin for OpenCode (v1.3.x) that implements a "Titan" orchestrator agent pattern. A single intelligent but slow "Titan" agent delegates all executable work to faster Myrmidons, maximizing parallelism and minimizing Titan's inference time.
 
@@ -16,7 +16,7 @@ The plugin is built with TypeScript, bundled with esbuild to ESM, and integrates
 ### Project Structure
 
 ```
-opencode-distributed-delegation/
+opencode-titan/
 ├── src/
 │   ├── index.ts           # Main plugin entry point
 │   ├── agents/
@@ -30,7 +30,7 @@ opencode-distributed-delegation/
 │   │   └── constants.ts   # TITAN_AGENT_NAME, DELEGATION_REMINDER
 │   ├── hooks/             # Empty placeholder
 │   └── utils/             # Empty placeholder
-├── opencode-distributed-delegation.schema.json  # JSON schema for config
+├── opencode-titan.schema.json  # JSON schema for config
 ├── package.json
 ├── tsconfig.json
 ├── biome.json
@@ -53,7 +53,7 @@ The plugin registers five hooks in `src/index.ts`:
 
 ### Config File Format
 
-Users configure the plugin via `opencode-distributed-delegation.jsonc`:
+Users configure the plugin via `opencode-titan.jsonc`:
 
 ```jsonc
 {
@@ -90,7 +90,7 @@ Users configure the plugin via `opencode-distributed-delegation.jsonc`:
 The config system supports two layers: user-level (global) and project-level, with project settings overriding user settings via deep merge.
 
 - **User config** is searched in: `$XDG_CONFIG_HOME/opencode/`, `~/.config/opencode/`, `~/.opencode/`.
-- **Project config** lives at `.opencode/opencode-distributed-delegation.{json,jsonc}`.
+- **Project config** lives at `.opencode/opencode-titan.{json,jsonc}`.
 - Both support `.jsonc` files with comments (`//`, `/* */`) via a hand-rolled comment stripper.
 - Environment variable interpolation is supported via `{env:VAR}` syntax.
 - Prompt files (`{agentName}.md` and `{agentName}_append.md`) can be placed in the same directories to replace or append to base prompts.

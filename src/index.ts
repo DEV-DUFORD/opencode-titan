@@ -35,9 +35,7 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
     providerLocks = new ProviderLockManager();
     agentLockInfoMap = buildAgentLockInfoMap(getMyrmidonConfigs(config));
   } catch (err) {
-    console.error(
-      `[opencode-distributed-delegation] FATAL: init failed: ${err}`,
-    );
+    console.error(`[opencode-titan] FATAL: init failed: ${err}`);
     throw err;
   }
 
@@ -45,7 +43,7 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
   const myrmidonCount = getMyrmidonConfigs(config).length;
   if (myrmidonCount < 1) {
     console.warn(
-      '[opencode-distributed-delegation] WARN: No Myrmidons configured. ' +
+      '[opencode-titan] WARN: No Myrmidons configured. ' +
         'Titan cannot delegate without Myrmidons. Add myrmidons to your config.',
     );
   }
@@ -69,7 +67,7 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
   };
 
   return {
-    name: 'opencode-distributed-delegation',
+    name: 'opencode-titan',
 
     agent: agents,
 
@@ -106,7 +104,7 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
       const timer = setTimeout(() => {
         if (heldLocks.has(key)) {
           console.warn(
-            `[opencode-distributed-delegation] WARN: provider lock for ` +
+            `[opencode-titan] WARN: provider lock for ` +
               `"${provider}" (${key}) auto-released after timeout; ` +
               'the task may have been interrupted.',
           );

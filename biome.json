@@ -1,7 +1,7 @@
 {
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "files": {
-    "includes": ["**", "!opencode-distributed-delegation.schema.json"]
+    "includes": ["**", "!opencode-titan.schema.json"]
   },
   "vcs": {
     "enabled": true,
