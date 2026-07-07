@@ -32,8 +32,30 @@ The plugin builds a two-tier hierarchy of agents:
 
 ## Installation
 
-> [!NOTE]
-> This plugin is not published to npm yet, so install it manually from source. npm/Bun package installation is coming soon.
+Add the [`opencode-titan`](https://www.npmjs.com/package/opencode-titan) package to the `plugin` array in your OpenCode config (`opencode.json`). OpenCode installs it automatically from npm on startup:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-titan"]
+}
+```
+
+To pin a specific version, append it with `@`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-titan@0.1.0"]
+}
+```
+
+Restart OpenCode and Titan becomes your default agent.
+
+<details>
+<summary><b>Alternative: install from source</b></summary>
+
+Use this if you want to hack on the plugin or run an unreleased version.
 
 **1. Clone and build the plugin:**
 
@@ -58,6 +80,8 @@ OpenCode treats any plugin entry starting with `.`, `file://`, or an absolute pa
 ```
 
 Restart OpenCode and Titan becomes your default agent.
+
+</details>
 
 ## Getting Started
 
