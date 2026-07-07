@@ -1,22 +1,37 @@
 import type { Plugin } from '@opencode-ai/plugin';
 import { createAgents, getAgentConfigs } from './agents';
-import { loadPluginConfig, TITAN_AGENT_NAME } from './config';
+import {
+  buildAgentProviderMap,
+  loadPluginConfig,
+  TITAN_AGENT_NAME,
+} from './config';
 import {
   DELEGATION_REMINDER,
   PER_MESSAGE_DELEGATION_REMINDER,
 } from './config/constants';
+import { ProviderLockManager } from './utils/provider-lock';
+
+// Safety net: auto-release a provider lock if `tool.execute.after` never fires
+// (e.g. the task was interrupted/cancelled) so a provider can't deadlock.
+const PROVIDER_LOCK_TIMEOUT_MS = 30 * 60 * 1000;
 
 const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
   let config: ReturnType<typeof loadPluginConfig>;
   let agents: ReturnType<typeof getAgentConfigs>;
   let agentDefs: ReturnType<typeof createAgents>;
   let sessionAgentMap: Map<string, string>;
+  // Runtime enforcement of the `provider` constraint: serialize child agents
+  // that share a provider so only one runs on a given backend at a time.
+  let providerLocks: ProviderLockManager;
+  let agentProviderMap: Map<string, string>;
 
   try {
     config = loadPluginConfig(ctx.directory);
     agentDefs = createAgents(config, { projectDirectory: ctx.directory });
     agents = getAgentConfigs(config, { projectDirectory: ctx.directory });
     sessionAgentMap = new Map<string, string>();
+    providerLocks = new ProviderLockManager();
+    agentProviderMap = buildAgentProviderMap(config.children ?? []);
   } catch (err) {
     console.error(
       `[opencode-distributed-delegation] FATAL: init failed: ${err}`,
@@ -33,10 +48,78 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
     );
   }
 
+  // Locks currently held by an in-flight task, keyed by `${sessionID}:${callID}`.
+  interface HeldLock {
+    provider: string;
+    release: () => void;
+    timer: ReturnType<typeof setTimeout>;
+  }
+  const heldLocks = new Map<string, HeldLock>();
+  const lockKey = (sessionID: string, callID: string): string =>
+    `${sessionID}:${callID}`;
+
+  const releaseLock = (key: string): void => {
+    const held = heldLocks.get(key);
+    if (!held) return;
+    heldLocks.delete(key);
+    clearTimeout(held.timer);
+    held.release();
+  };
+
   return {
     name: 'opencode-distributed-delegation',
 
     agent: agents,
+
+    // Enforce the `provider` constraint at runtime. A child agent's provider
+    // represents the physical backend serving its model; when several children
+    // share a provider only one can be active at a time (e.g. limited VRAM).
+    // Acquiring a per-provider lock before the subagent starts, and releasing it
+    // after it finishes, serializes same-provider children even when Titan
+    // dispatches them "in parallel".
+    'tool.execute.before': async (
+      input: { tool: string; sessionID: string; callID: string },
+      output: { args: unknown },
+    ): Promise<void> => {
+      if (input.tool !== 'task') return;
+
+      const args = output.args as { subagent_type?: string } | undefined;
+      const subagentType = args?.subagent_type;
+      if (!subagentType) return;
+
+      const provider = agentProviderMap.get(subagentType);
+      if (!provider) return; // Unknown/unmanaged agent — don't gate it.
+
+      const key = lockKey(input.sessionID, input.callID);
+      // Guard against re-entrant hook invocation for the same call.
+      if (heldLocks.has(key)) return;
+
+      const release = await providerLocks.acquire(provider);
+      const timer = setTimeout(() => {
+        if (heldLocks.has(key)) {
+          console.warn(
+            `[opencode-distributed-delegation] WARN: provider lock for ` +
+              `"${provider}" (${key}) auto-released after timeout; ` +
+              'the task may have been interrupted.',
+          );
+          releaseLock(key);
+        }
+      }, PROVIDER_LOCK_TIMEOUT_MS);
+      // Don't keep the process alive just for this safety timer.
+      (timer as { unref?: () => void }).unref?.();
+
+      heldLocks.set(key, { provider, release, timer });
+    },
+
+    // Release the provider lock once the subagent task completes (or errors).
+    'tool.execute.after': async (input: {
+      tool: string;
+      sessionID: string;
+      callID: string;
+    }): Promise<void> => {
+      if (input.tool !== 'task') return;
+      releaseLock(lockKey(input.sessionID, input.callID));
+    },
 
     config: async (opencodeConfig: Record<string, unknown>) => {
       // Set Titan as the default agent
@@ -153,6 +236,12 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
         const sessionID = props?.info?.id ?? props?.sessionID;
         if (sessionID) {
           sessionAgentMap.delete(sessionID);
+          // Release any provider locks still held by this session's tasks.
+          for (const key of [...heldLocks.keys()]) {
+            if (key.startsWith(`${sessionID}:`)) {
+              releaseLock(key);
+            }
+          }
         }
       }
     },

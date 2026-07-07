@@ -1,6 +1,6 @@
 import type { AgentConfig } from '@opencode-ai/sdk/v2';
 import type { ChildAgentConfig } from '../config';
-import { DELEGATION_REMINDER } from '../config';
+import { DELEGATION_REMINDER, resolveChildProvider } from '../config';
 
 export interface AgentDefinition {
   name: string;
@@ -29,8 +29,7 @@ export function resolvePrompt(
 export function buildTitanPrompt(children: ChildAgentConfig[]): string {
   // Build child agent descriptions for the prompt
   // Derive provider from config or fall back to the model string prefix
-  const resolveProvider = (child: ChildAgentConfig): string =>
-    child.provider ?? child.model.split('/')[0];
+  const resolveProvider = resolveChildProvider;
 
   const childDescriptions = children
     .map((child, idx) => {

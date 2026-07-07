@@ -4,4 +4,5 @@ export {
   loadAgentPrompt,
   loadPluginConfig,
 } from './loader';
+export { buildAgentProviderMap, resolveChildProvider } from './providers';
 export * from './schema';
