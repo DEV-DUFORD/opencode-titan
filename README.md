@@ -1,6 +1,9 @@
 <div align="center">
   <h3>⚡ opencode-titan ⚡</h3>
 
+  <img src="assets/titan-demo.gif" alt="opencode-titan demo" width="100%">
+
+
   <p><i>One mind that never touches the keyboard. A fleet of hands that never stops moving.<br>Plan with the slow, expensive genius, and let the fast ones build in parallel.</i></p>
 
   <p><b>OpenCode Orchestration Plugin</b> · Mix any models · Delegate everything · Run in parallel</p>
