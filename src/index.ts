@@ -48,22 +48,50 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
     );
   }
 
-  // Locks currently held by an in-flight task, keyed by `${sessionID}:${callID}`.
-  interface HeldLock {
+  // Provider-lock bookkeeping for in-flight tasks, keyed by
+  // `${sessionID}:${callID}`. An entry is created the moment a task's lock
+  // acquisition *begins* (before the `acquire` promise resolves) so that a
+  // task which is still queued for a slot can also be cancelled cleanly.
+  interface TaskLock {
     provider: string;
-    release: () => void;
-    timer: ReturnType<typeof setTimeout>;
+    sessionID: string;
+    // Set once the slot is granted; undefined while still queued for a slot.
+    release?: () => void;
+    // Safety-net auto-release timer; set alongside `release`.
+    timer?: ReturnType<typeof setTimeout>;
+    // Marked true when the task is cancelled (e.g. the user interrupts a
+    // Myrmidon) before/while its slot is being acquired. A still-queued
+    // acquisition sees this once granted and releases immediately, and a
+    // granted slot is released right away — preventing a leaked lock that
+    // would otherwise wedge future delegations to the same provider/model.
+    cancelled: boolean;
   }
-  const heldLocks = new Map<string, HeldLock>();
+  const taskLocks = new Map<string, TaskLock>();
   const lockKey = (sessionID: string, callID: string): string =>
     `${sessionID}:${callID}`;
 
   const releaseLock = (key: string): void => {
-    const held = heldLocks.get(key);
-    if (!held) return;
-    heldLocks.delete(key);
-    clearTimeout(held.timer);
-    held.release();
+    const entry = taskLocks.get(key);
+    if (!entry) return;
+    taskLocks.delete(key);
+    entry.cancelled = true;
+    if (entry.timer) clearTimeout(entry.timer);
+    // If the slot was granted, release it now. If it's still queued, marking
+    // `cancelled` ensures the acquisition releases as soon as it's granted.
+    entry.release?.();
+  };
+
+  // Release every provider lock still associated with a session. Used when a
+  // session goes idle, errors out, or is deleted — at which point no task tool
+  // can still be executing in that session, so any lock we're still holding for
+  // it was leaked (e.g. the task was interrupted and `tool.execute.after`
+  // never fired).
+  const releaseLocksForSession = (sessionID: string): void => {
+    for (const [key, entry] of [...taskLocks.entries()]) {
+      if (entry.sessionID === sessionID) {
+        releaseLock(key);
+      }
+    }
   };
 
   return {
@@ -94,15 +122,34 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
 
       const key = lockKey(input.sessionID, input.callID);
       // Guard against re-entrant hook invocation for the same call.
-      if (heldLocks.has(key)) return;
+      if (taskLocks.has(key)) return;
+
+      // Register the task *before* awaiting the slot so that a cancellation
+      // arriving while we're still queued can flag this acquisition.
+      const entry: TaskLock = {
+        provider,
+        sessionID: input.sessionID,
+        cancelled: false,
+      };
+      taskLocks.set(key, entry);
 
       const release = await providerLocks.acquire(
         provider,
         model,
         maxInstances,
       );
+
+      // If the task was cancelled while we were queued for a slot, release the
+      // just-granted slot immediately instead of holding it for a task that is
+      // no longer running.
+      if (entry.cancelled) {
+        release();
+        taskLocks.delete(key);
+        return;
+      }
+
       const timer = setTimeout(() => {
-        if (heldLocks.has(key)) {
+        if (taskLocks.has(key)) {
           console.warn(
             `[opencode-titan] WARN: provider lock for ` +
               `"${provider}" (${key}) auto-released after timeout; ` +
@@ -114,7 +161,8 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
       // Don't keep the process alive just for this safety timer.
       (timer as { unref?: () => void }).unref?.();
 
-      heldLocks.set(key, { provider, release, timer });
+      entry.release = release;
+      entry.timer = timer;
     },
 
     // Release the provider lock once the subagent task completes (or errors).
@@ -236,17 +284,28 @@ const OpenCodeDistributedDelegation: Plugin = async (ctx) => {
         };
       };
 
+      const props = event.properties;
+      const sessionID = props?.sessionID ?? props?.info?.id;
+
+      // A task's provider lock is normally released by `tool.execute.after`.
+      // But if the user interrupts a Myrmidon mid-run (or the session errors
+      // out), that hook never fires and the lock would stay held until the
+      // safety timeout — wedging any later delegation to the same
+      // provider/model. Once a session is idle/errored/deleted no task tool can
+      // still be executing in it, so release any locks we still hold for it.
+      if (
+        sessionID &&
+        (event.type === 'session.idle' ||
+          event.type === 'session.error' ||
+          event.type === 'session.deleted')
+      ) {
+        releaseLocksForSession(sessionID);
+      }
+
       if (event.type === 'session.deleted') {
-        const props = event.properties;
-        const sessionID = props?.info?.id ?? props?.sessionID;
-        if (sessionID) {
-          sessionAgentMap.delete(sessionID);
-          // Release any provider locks still held by this session's tasks.
-          for (const key of [...heldLocks.keys()]) {
-            if (key.startsWith(`${sessionID}:`)) {
-              releaseLock(key);
-            }
-          }
+        const deletedID = props?.info?.id ?? props?.sessionID;
+        if (deletedID) {
+          sessionAgentMap.delete(deletedID);
         }
       }
     },
