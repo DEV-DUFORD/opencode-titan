@@ -22,6 +22,11 @@ export const MyrmidonConfigSchema = z
     // Because instances share the same model (already loaded in the provider's
     // VRAM), they can run concurrently on the same provider. Defaults to 1.
     maxInstances: z.number().int().min(1).optional(),
+    // Maximum context window (in tokens) this Myrmidon's model can handle before
+    // it is forced to compact/truncate its history. Optional — mainly relevant
+    // for locally hosted models with fixed context limits. When present, Titan
+    // uses it to avoid handing large or complex tasks to small-context workers.
+    maxContextLength: z.number().int().min(1).optional(),
     temperature: z.number().min(0).max(2).optional(),
     variant: z.string().optional(),
     displayName: z.string().min(1).optional(),

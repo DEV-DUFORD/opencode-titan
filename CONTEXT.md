@@ -110,9 +110,11 @@ Three Zod schemas define the configuration shape:
 
 Titan's system prompt is dynamically generated per-session based on the configured Myrmidon fleet. It includes:
 
-- Per-Myrmidon descriptions with their speed, intelligence, model type, and max instances.
+- Per-Myrmidon descriptions with their speed, intelligence, model type, max instances, and (when configured) context-window budget.
 - Provider conflict warnings — Myrmidons running different models on the same provider must run sequentially; a Myrmidon with `maxInstances > 1` may self-parallelize (same model, one VRAM load).
 - Capability-based delegation guidance derived from the fleet composition.
+- Context-window budget guidance — when any Myrmidon declares `maxContextLength`, Titan is told each worker's token budget and instructed to size/split tasks to fit rather than pushing a small-context worker into a lossy compaction.
+- A two-part "do it yourself" carve-out: context-bound synthesis (writing up findings/plans that live in Titan's own context) and foundational directive reads (reading a source-of-truth doc — e.g. a `PLAN.md` — at full fidelity, since delegating it would return a lossy summary of the directive that steers Titan's own planning).
 - Full workflow instructions for planning, dispatching, and synthesizing.
 - `DELEGATION_REMINDER` appended at the end to keep Titan in delegation mode.
 
@@ -130,6 +132,8 @@ Titan's system prompt is dynamically generated per-session based on the configur
 3. **Prompt composition** — Base prompts are replaceable or appendable via `.md` files alongside config directories.
 4. **Serve-mode resilience** — The delegation reminder is injected at runtime via the system transform hook to keep Titan in delegation mode during long sessions.
 5. **Hand-rolled JSONC parser** — Comment stripping is implemented without external dependencies.
+6. **Context-window–aware routing** — Myrmidons may declare a `maxContextLength` (hard token budget, chiefly for local models). When present, Titan is given each worker's budget and told to size/split tasks to fit rather than overload a small-context worker into a lossy compaction. Myrmidons themselves are *not* instructed to truncate their work — only Titan's routing is made budget-aware — so workers still complete their scoped tasks in full.
+7. **Full-fidelity foundational reads** — Reading a source-of-truth directive (e.g. a `PLAN.md` Titan is asked to execute) is a deliberate exception to "delegate everything": Titan reads it itself so its planning isn't built off a Myrmidon's lossy summary of the very document meant to steer it.
 
 ## Dependencies
 

@@ -133,11 +133,16 @@ Here's a complete starting configuration:
 > [!TIP]
 > Mix providers to unlock real parallelism. Two Myrmidons running **different models** on the same provider run one after another; two Myrmidons on *different* providers run at the same time. Set `maxInstances` on a Myrmidon to run several copies of its *same* model in parallel on one provider.
 
+> [!TIP]
+> Running local models with fixed context windows? Set `maxContextLength` (in tokens) on those Myrmidons. Titan then knows each worker's budget and steers large or complex tasks away from small-context workers — avoiding the lossy mid-task history compaction that would otherwise wreck their output. Leave it off cloud/ample-capacity models.
+
 ## Meet the Agents
 
 ### 🧠 Titan — The Orchestrator
 
 Titan is the most intelligent agent in the fleet, and by far the slowest and most expensive to run. It never reads a file, runs a search, or writes a line of code if a Myrmidon can do it instead. Its entire purpose is strategic: decompose the goal, route each task to the best-suited Myrmidon, gate the quality of what comes back, and synthesize the final result.
+
+There are two deliberate exceptions where Titan works directly rather than delegating: **context-bound synthesis** (writing up findings, plans, or reports that live in its own accumulated context) and **foundational directive reads** — when you hand Titan a source-of-truth document to execute (a `PLAN.md`, spec, or task list), it reads that document itself, at full fidelity. Delegating the read would only return a lossy summary of the very directive meant to steer Titan's planning and routing.
 
 <table>
   <tr><td><b>Role</b></td><td><code>Planning, routing, quality-gating, and synthesis</code></td></tr>
@@ -177,6 +182,7 @@ Myrmidons are the hands. Each executes a delegated task and reports back concise
 | `intelligence` | `number` (1–10) | ✅ | Reasoning capability rating; higher = better logic |
 | `modelType` | `"dense"` \| `"sparse"` | ✅ | `dense` for logic/reasoning, `sparse` for search/info gathering |
 | `maxInstances` | `number` (≥1) | | Max parallel instances Titan may run for this Myrmidon. Since instances share the same model (already in the provider's VRAM), they run concurrently on the same provider. Default: `1` |
+| `maxContextLength` | `number` (≥1) | | Hard context-window limit (in tokens) for this Myrmidon's model. Mainly for locally hosted models with fixed windows. When set, Titan avoids handing this worker large/complex tasks that would exceed its budget (and force a lossy compaction). Omit for ample-capacity/cloud models. |
 | `temperature` | `number` (0–2) | | Sampling temperature (default: `0.1`) |
 | `variant` | `string` | | Selects a named model variant defined by the provider for this `model` (see [Model variants](#model-variants)). Must match a variant key the provider declares for the model; leave unset to use the model's defaults |
 | `displayName` | `string` | | Friendly name shown in the UI |

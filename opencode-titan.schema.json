@@ -98,6 +98,11 @@
           "minimum": 1,
           "description": "Maximum number of parallel instances Titan may run for this Myrmidon. Since instances share the same model (already loaded in the provider's VRAM), they can run concurrently on the same provider. Defaults to 1."
         },
+        "maxContextLength": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum context window (in tokens) this Myrmidon's model can handle before it is forced to compact or truncate its history. Optional — mainly relevant for locally hosted models with fixed context limits. When present, Titan uses it to avoid handing large or complex tasks to small-context workers."
+        },
         "temperature": {
           "type": "number",
           "minimum": 0,

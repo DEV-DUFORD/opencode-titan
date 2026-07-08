@@ -68,7 +68,11 @@ export function buildTitanPrompt(
 - **Speed:** ${myrmidon.speed}/10 (${myrmidon.speed >= 7 ? 'fast' : myrmidon.speed >= 4 ? 'moderate' : 'slow'})
 - **Intelligence:** ${myrmidon.intelligence}/10 (${myrmidon.intelligence >= 7 ? 'strong reasoning' : myrmidon.intelligence >= 4 ? 'adequate reasoning' : 'limited reasoning'})
 - **Model Type:** ${myrmidon.modelType} (${myrmidon.modelType === 'dense' ? 'better at logic, planning, complex problem-solving' : 'better at information gathering, fast lookups, broad search'})
-- **Best for:** ${bestFor(myrmidon)}
+- **Best for:** ${bestFor(myrmidon)}${
+        myrmidon.maxContextLength
+          ? `\n- **Context Window:** ~${myrmidon.maxContextLength.toLocaleString()} tokens (HARD limit — this worker cannot hold more than this. Do NOT hand it tasks whose instructions + expected exploration would exceed roughly this budget; give large/complex/many-file work to a bigger-context worker instead.)`
+          : ''
+      }
 ${myrmidon.displayName ? `- **Display Name (UI label only — NEVER use this to route or to refer to this worker; always say @${name}):** ${myrmidon.displayName}` : ''}
 </Myrmidon>`;
     })
@@ -174,6 +178,35 @@ ${myrmidon.displayName ? `- **Display Name (UI label only — NEVER use this to 
         `- @myrmidon-${idx}: up to ${myrmidon.maxInstances} instances in parallel (same model on ${resolveProvider(myrmidon)} — safe to load once, run many)`,
     );
 
+  // Myrmidons that advertise a hard context-window limit. Titan uses these to
+  // avoid handing oversized/complex work to small-context workers (which would
+  // otherwise be forced to compact or truncate mid-task and fail).
+  const contextLimitedMyrmidons = myrmidons
+    .map((myrmidon, idx) => ({ myrmidon, idx }))
+    .filter(({ myrmidon }) => typeof myrmidon.maxContextLength === 'number')
+    .sort(
+      (a, b) =>
+        (a.myrmidon.maxContextLength ?? 0) - (b.myrmidon.maxContextLength ?? 0),
+    )
+    .map(
+      ({ myrmidon, idx }) =>
+        `- @myrmidon-${idx}: ~${(myrmidon.maxContextLength ?? 0).toLocaleString()} tokens`,
+    );
+
+  const contextBudgetGuidance =
+    contextLimitedMyrmidons.length > 0
+      ? `\n## Context-Window Budgets
+Some Myrmidons declare a HARD context window — the maximum history their model can hold before it is forced to compact or truncate. A Myrmidon that compacts mid-task loses information and produces unreliable results, so you must never push one past its budget. Match task size to context budget:
+
+${contextLimitedMyrmidons.join('\n')}
+
+- Estimate each task's footprint: your instructions + the files/output the Myrmidon must read and produce to finish it. Route large, complex, or many-file tasks to workers with a large (or unspecified) context window; reserve small-context workers for tightly-scoped, self-contained tasks.
+- When a task is too big for the only capable worker's context, SPLIT it into smaller bounded sub-tasks that each fit — do not send one oversized prompt and hope it fits.
+- Do NOT, however, instruct a Myrmidon to artificially cut its work short to "save context." Scope the task to fit; let the worker do that scoped task fully.
+- Myrmidons without a declared context window are assumed to have ample capacity (typically cloud-hosted) — no special sizing needed.
+`
+      : '';
+
   return `<Role>
 You are Titan — the most intelligent and capable agent in this system, but also by far the slowest. You are borderline unusably slow on this hardware. Your survival depends on one rule:
 
@@ -232,6 +265,17 @@ When you do produce such a deliverable yourself, you may still delegate the *mec
 
 Writing a file is a single tool call — cheap. Do NOT delegate a context-bound write just to avoid one tool call; the cost of losing context far outweighs the cost of the call.
 
+## The Second Exception: Foundational Directive Reads
+There is one more class of work you must do YOURSELF: **reading the source-of-truth document that will drive your own planning and delegation.** When the user hands you a foundational artifact — a PLAN.md, spec, design doc, task list, requirements file, or similar — and asks you to read it and execute on it, that document IS the input to YOUR job. It controls how you decompose the work and which Myrmidons you route it to.
+
+If you delegate that read, a Myrmidon returns a lossy, summarized paraphrase — and you would then plan the entire effort off a degraded copy of the very directive that's supposed to steer you. The information lost in summarization is exactly the detail you need to delegate correctly. So you read it yourself, at full fidelity, then plan and delegate from the complete picture.
+
+This is a NARROW exception — it is not license to read files whenever you feel like it. It applies only when the document is the controlling directive for the current effort. Distinguish carefully:
+- **User points you at a plan/spec/instructions to drive the whole task** (e.g. "read PLAN.md and start executing it", "follow the spec in DESIGN.md") → read it YOURSELF. It's the foundation of your planning.
+- **You need the contents of some file as raw material for a delegated sub-task** (e.g. "what does this util do", "find where X is defined", "refactor this module") → DELEGATE the read. It's fresh lookup work, not your controlling directive.
+
+Rule of thumb: if summarizing the document away would compromise how YOU plan and route, read it yourself. If it's just one more fact-gathering step feeding a worker's task, delegate it.
+
 ## Parallelization is Key
 You are slow. Your Myrmidons are fast — sometimes 50x faster. You have **${myrmidons.length} Myrmidon${myrmidons.length !== 1 ? 's' : ''}**. There is NO cap on how many you can run at once — dispatch all of them simultaneously if the work warrants it.
 
@@ -262,7 +306,7 @@ ${capabilityGuidance.join('\n')}
 - Each Myrmidon should receive a clear, bounded objective
 - Reference file paths and line numbers instead of pasting full file contents
 - Provide enough context for the Myrmidon to succeed independently
-
+${contextBudgetGuidance}
 </DelegationPhilosophy>
 
 <Workflow>
