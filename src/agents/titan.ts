@@ -38,6 +38,22 @@ export function buildTitanPrompt(
   // Derive provider from config or fall back to the model string prefix.
   const resolveProvider = resolveMyrmidonProvider;
 
+  const bestFor = (myrmidon: MyrmidonConfig): string => {
+    const strong = myrmidon.intelligence >= 7;
+    const fast = myrmidon.speed >= 7;
+    if (myrmidon.modelType === 'dense') {
+      if (strong) {
+        return 'hard reasoning, complex code generation, debugging strategy, architectural decisions';
+      }
+      return 'moderate logic tasks, small bounded code changes, structured analysis';
+    }
+    // sparse
+    if (fast) {
+      return 'fast codebase search, documentation lookups, broad exploration, gathering many facts in parallel';
+    }
+    return 'general information gathering and lookups';
+  };
+
   const myrmidonDescriptions = myrmidons
     .map((myrmidon, idx) => {
       const name = `myrmidon-${idx}`;
@@ -52,10 +68,53 @@ export function buildTitanPrompt(
 - **Speed:** ${myrmidon.speed}/10 (${myrmidon.speed >= 7 ? 'fast' : myrmidon.speed >= 4 ? 'moderate' : 'slow'})
 - **Intelligence:** ${myrmidon.intelligence}/10 (${myrmidon.intelligence >= 7 ? 'strong reasoning' : myrmidon.intelligence >= 4 ? 'adequate reasoning' : 'limited reasoning'})
 - **Model Type:** ${myrmidon.modelType} (${myrmidon.modelType === 'dense' ? 'better at logic, planning, complex problem-solving' : 'better at information gathering, fast lookups, broad search'})
-${myrmidon.displayName ? `- **Display Name:** ${myrmidon.displayName}` : ''}
+- **Best for:** ${bestFor(myrmidon)}
+${myrmidon.displayName ? `- **Display Name (UI label only — NEVER use this to route or to refer to this worker; always say @${name}):** ${myrmidon.displayName}` : ''}
 </Myrmidon>`;
     })
     .join('\n\n');
+
+  // Capability-ranked roster so Titan selects by fitness, not config order.
+  // Ties broken by lowest index only for determinism; this is NOT a hint to
+  // prefer low indices in general.
+  const byIntelligence = myrmidons
+    .map((m, idx) => ({ m, idx }))
+    .sort((a, b) => b.m.intelligence - a.m.intelligence || a.idx - b.idx);
+  const bySpeed = myrmidons
+    .map((m, idx) => ({ m, idx }))
+    .sort((a, b) => b.m.speed - a.m.speed || a.idx - b.idx);
+
+  const smartest = byIntelligence[0];
+  const fastest = bySpeed[0];
+  const denseRanked = byIntelligence.filter(({ m }) => m.modelType === 'dense');
+  const sparseRanked = bySpeed.filter(({ m }) => m.modelType === 'sparse');
+
+  const rankLines: string[] = [];
+  if (smartest) {
+    rankLines.push(
+      `- **Smartest (use for the hardest reasoning):** @myrmidon-${smartest.idx} (intelligence ${smartest.m.intelligence}/10)`,
+    );
+  }
+  if (fastest) {
+    rankLines.push(
+      `- **Fastest (use for time-sensitive lookups / max parallelism):** @myrmidon-${fastest.idx} (speed ${fastest.m.speed}/10)`,
+    );
+  }
+  if (denseRanked.length > 0) {
+    rankLines.push(
+      `- **Dense (logic/planning), best→worst:** ${denseRanked
+        .map(({ idx, m }) => `@myrmidon-${idx} (int ${m.intelligence})`)
+        .join(', ')}`,
+    );
+  }
+  if (sparseRanked.length > 0) {
+    rankLines.push(
+      `- **Sparse (search/gathering), fastest→slowest:** ${sparseRanked
+        .map(({ idx, m }) => `@myrmidon-${idx} (spd ${m.speed})`)
+        .join(', ')}`,
+    );
+  }
+  const capabilityRoster = rankLines.join('\n');
 
   // Build delegation guidance based on Myrmidon capabilities
   const hasDense = myrmidons.some((m) => m.modelType === 'dense');
@@ -126,6 +185,14 @@ You have ${myrmidons.length} Myrmidons available:
 
 ${myrmidonDescriptions}
 
+**CAPABILITY ROSTER — pick by fitness, never by number**
+Your Myrmidons are NOT interchangeable and are NOT to be used in numeric order. myrmidon-0 is not "the default." Choose the worker whose Speed / Intelligence / Model Type best fits each task, using this ranking:
+${capabilityRoster}
+
+Routing rule: match the task to a capability FIRST, then pick the worker that ranks highest for that capability. The index in the name (0, 1, 2, …) is just an identifier — it carries NO priority. Sending most work to @myrmidon-0 simply because it is listed first is a bug.
+
+**Canonical naming:** Refer to every worker ONLY by its \`@myrmidon-N\` name — in your planning, your reasoning, your dispatches, and when re-running or referencing a previous task. Do not use a worker's Display Name or any \`child-N\` alias to identify it. When you re-run a task, re-use the EXACT same \`@myrmidon-N\` you originally dispatched it to; verify the index against the roster before dispatching so you don't accidentally reference a different worker.
+
 ${sharedProviders.length > 0 ? `\n**⚠️ PROVIDER CONFLICTS — READ BEFORE EVERY DISPATCH ⚠️**\nEach line below is a group of mutually-exclusive Myrmidons that share one physical backend. Only one model fits in that backend's VRAM at a time. Treat each group as a "pick at most ONE per turn" constraint:\n${sharedProviders.join('\n')}\n\nBefore you emit a batch of task() calls, scan your chosen Myrmidons against these groups. If your batch contains two Myrmidons from the same group, it is WRONG — drop one and replace it with a Myrmidon on a free provider (or defer that work to a later turn).` : ''}
 
 ${selfParallelMyrmidons.length > 0 ? `**Self-parallel Myrmidons (same model, safe to run multiple copies at once):**\n${selfParallelMyrmidons.join('\n')}` : ''}
@@ -170,10 +237,10 @@ You are slow. Your Myrmidons are fast — sometimes 50x faster. You have **${myr
 
 **You must never artificially cap dispatches at 2.** If there are 3, 4, or 5 independent tasks, dispatch 3, 4, or 5 Myrmidons in one turn.
 
-Examples:
-- 3 independent investigation tasks → dispatch @myrmidon-0, @myrmidon-1, and @myrmidon-2 in ONE response.
-- 5 files to analyze → dispatch one Myrmidon per file, all in ONE response.
-- Mix of coding + research + validation → dispatch a Myrmidon for each, all at once.
+Examples (note: the worker names below are illustrative — always pick by capability from the roster, not by these literal indices):
+- 3 independent investigation tasks → dispatch three DIFFERENT Myrmidons chosen for the work (e.g. the hard-analysis one to your smartest dense worker, the two lookups to your fastest sparse workers) in ONE response.
+- 5 files to analyze → dispatch one Myrmidon per file, all in ONE response, spreading them across your fastest workers and free providers.
+- Mix of coding + research + validation → route the coding to a dense worker, the research to a fast sparse worker, the validation to whichever capable worker is on a free provider — all at once.
 
 Identify idle Myrmidons before acting on anything yourself.
 
@@ -207,6 +274,13 @@ Build a minimal work graph:
 - Which tasks can run in parallel immediately?
 - Which tasks depend on others?
 - Which Myrmidon is best suited for each task based on speed, intelligence, and model type?
+
+### Worker-selection algorithm (run this for EVERY task — do not default to index order)
+For each unit of work, in order:
+1. **Classify the task:** is it (a) hard reasoning / complex code / debugging strategy → wants *dense + high intelligence*, or (b) search / lookup / broad gathering → wants *sparse + high speed*?
+2. **Consult the CAPABILITY ROSTER** above and pick the highest-ranked worker for that class. Use the "Smartest" worker for (a); use the "Fastest" sparse worker for (b).
+3. **Apply the provider constraint:** if your top pick's provider is already taken this turn by a different model, drop to the next-best worker on a FREE provider rather than colliding.
+4. **Only then** emit the dispatch. The numeric index played no role in this decision — if you notice you're about to send everything to @myrmidon-0, stop and re-run this algorithm; you're almost certainly ignoring a better-fit worker.
 
 ## 3. Dispatch
 Launch ALL independent tasks in a single response using the task() tool.
