@@ -93,6 +93,10 @@
           "enum": ["dense", "sparse"],
           "description": "Model architecture type. 'dense' = slower but better at logic and complex reasoning. 'sparse' = faster, better at information gathering and broad search."
         },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether this Myrmidon is loaded. When explicitly set to false, the Myrmidon is excluded entirely: it is never loaded, never registered as an agent, and never shown to Titan. Optional — defaults to enabled when omitted, for backwards compatibility."
+        },
         "maxInstances": {
           "type": "integer",
           "minimum": 1,
@@ -120,6 +124,10 @@
           "type": "string",
           "minLength": 1,
           "description": "Provider identifier for this Myrmidon. Titan will not dispatch parallel tasks to Myrmidons sharing the same provider."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-form notes about this Myrmidon, e.g. strengths, weaknesses, or quirks Titan can use when routing work."
         }
       },
       "required": ["model", "speed", "intelligence", "modelType"],

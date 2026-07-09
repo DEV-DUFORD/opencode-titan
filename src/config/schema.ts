@@ -18,6 +18,11 @@ export const MyrmidonConfigSchema = z
     speed: z.number().int().min(1).max(10),
     intelligence: z.number().int().min(1).max(10),
     modelType: ModelTypeSchema,
+    // When explicitly set to `false`, this Myrmidon is excluded entirely: it is
+    // never loaded, never registered as an agent, and never shown to Titan.
+    // Optional and defaults to enabled when absent, preserving backwards
+    // compatibility with configs that predate this field.
+    enabled: z.boolean().optional(),
     // Maximum number of parallel instances Titan may run for this Myrmidon.
     // Because instances share the same model (already loaded in the provider's
     // VRAM), they can run concurrently on the same provider. Defaults to 1.
@@ -31,6 +36,7 @@ export const MyrmidonConfigSchema = z
     variant: z.string().optional(),
     displayName: z.string().min(1).optional(),
     provider: z.string().min(1).optional(),
+    notes: z.string().optional(),
   })
   .strict();
 
@@ -84,7 +90,12 @@ export type PluginConfig = z.infer<typeof PluginConfigSchema>;
 /**
  * Resolve the configured Myrmidon fleet, honoring the deprecated `children`
  * key. `myrmidons` takes precedence when both are provided.
+ *
+ * Myrmidons with `enabled: false` are filtered out here so they are excluded
+ * before Titan's prompt is built and before any agents are created. A missing
+ * `enabled` field is treated as enabled for backwards compatibility.
  */
 export function getMyrmidonConfigs(config?: PluginConfig): MyrmidonConfig[] {
-  return config?.myrmidons ?? config?.children ?? [];
+  const myrmidons = config?.myrmidons ?? config?.children ?? [];
+  return myrmidons.filter((myrmidon) => myrmidon.enabled !== false);
 }

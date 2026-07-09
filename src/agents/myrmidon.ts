@@ -84,5 +84,5 @@ function buildMyrmidonDescription(
       ? 'logic & reasoning specialist'
       : 'information gathering specialist';
 
-  return `Myrmidon #${index} (${typeLabel}). Speed: ${config.speed}/10, Intelligence: ${config.intelligence}/10. Model: ${config.model}.`;
+  return `Myrmidon #${index} (${typeLabel}). Speed: ${config.speed}/10, Intelligence: ${config.intelligence}/10. Model: ${config.model}.${config.notes ? ` Notes: ${config.notes}` : ''}`;
 }

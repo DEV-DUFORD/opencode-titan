@@ -79,7 +79,8 @@ Users configure the plugin via `opencode-titan.jsonc` in their OpenCode config d
       "model": "anthropic/claude-haiku-3.5",
       "speed": 7,
       "intelligence": 8,
-      "modelType": "dense"
+      "modelType": "dense",
+      "notes": "Smart model, but gets really slow after 10k tokens due to running on old hardware"
     }
   ]
 }

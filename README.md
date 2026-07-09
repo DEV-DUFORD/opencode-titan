@@ -181,6 +181,7 @@ Myrmidons are the hands. Each executes a delegated task and reports back concise
 | `speed` | `number` (1–10) | ✅ | Relative speed rating; higher = faster responses |
 | `intelligence` | `number` (1–10) | ✅ | Reasoning capability rating; higher = better logic |
 | `modelType` | `"dense"` \| `"sparse"` | ✅ | `dense` for logic/reasoning, `sparse` for search/info gathering |
+| `enabled` | `boolean` | | When set to `false`, this Myrmidon is excluded entirely — never loaded, never registered, and never shown to Titan. Handy for toggling workers off (e.g. when their backing server isn't running) without deleting their config. Omit to keep the Myrmidon enabled (default). |
 | `maxInstances` | `number` (≥1) | | Max parallel instances Titan may run for this Myrmidon. Since instances share the same model (already in the provider's VRAM), they run concurrently on the same provider. Default: `1` |
 | `maxContextLength` | `number` (≥1) | | Hard context-window limit (in tokens) for this Myrmidon's model. Mainly for locally hosted models with fixed windows. When set, Titan avoids handing this worker large/complex tasks that would exceed its budget (and force a lossy compaction). Omit for ample-capacity/cloud models. |
 | `temperature` | `number` (0–2) | | Sampling temperature (default: `0.1`) |
