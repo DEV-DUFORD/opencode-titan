@@ -68,8 +68,7 @@ Users configure the plugin via `opencode-titan.jsonc`:
       "model": "openai/gpt-4.1-mini",
       "speed": 9,
       "intelligence": 6,
-      "modelType": "sparse",
-      "displayName": "Fast Searcher"
+      "modelType": "sparse"
     },
     {
       "model": "anthropic/claude-haiku-3.5",

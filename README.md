@@ -114,8 +114,7 @@ Here's a complete starting configuration:
       "model": "openai/gpt-4.1-mini",
       "speed": 9,
       "intelligence": 6,
-      "modelType": "sparse",
-      "displayName": "Fast Searcher"
+      "modelType": "sparse"
     },
     {
       "model": "anthropic/claude-haiku-3.5",
@@ -186,7 +185,6 @@ Myrmidons are the hands. Each executes a delegated task and reports back concise
 | `maxContextLength` | `number` (≥1) | | Hard context-window limit (in tokens) for this Myrmidon's model. Mainly for locally hosted models with fixed windows. When set, Titan avoids handing this worker large/complex tasks that would exceed its budget (and force a lossy compaction). Omit for ample-capacity/cloud models. |
 | `temperature` | `number` (0–2) | | Sampling temperature (default: `0.1`) |
 | `variant` | `string` | | Selects a named model variant defined by the provider for this `model` (see [Model variants](#model-variants)). Must match a variant key the provider declares for the model; leave unset to use the model's defaults |
-| `displayName` | `string` | | Friendly name shown in the UI |
 | `provider` | `string` | | Explicit provider name (defaults to the prefix of `model`) |
 
 ### Titan Options

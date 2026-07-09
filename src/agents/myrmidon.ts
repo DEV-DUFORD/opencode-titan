@@ -57,7 +57,6 @@ export function createMyrmidonAgent(
 
   return {
     name,
-    displayName: config.displayName,
     description: buildMyrmidonDescription(index, config),
     config: {
       model: config.model,

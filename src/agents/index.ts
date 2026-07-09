@@ -98,11 +98,6 @@ export function getAgentConfigs(
       sdkConfig.mode = 'subagent' as const;
     }
 
-    if (agent.displayName) {
-      (sdkConfig as SDKAgentConfig & { displayName?: string }).displayName =
-        agent.displayName;
-    }
-
     entries.push([agent.name, sdkConfig]);
   }
 

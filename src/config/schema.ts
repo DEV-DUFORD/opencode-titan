@@ -34,9 +34,12 @@ export const MyrmidonConfigSchema = z
     maxContextLength: z.number().int().min(1).optional(),
     temperature: z.number().min(0).max(2).optional(),
     variant: z.string().optional(),
-    displayName: z.string().min(1).optional(),
     provider: z.string().min(1).optional(),
     notes: z.string().optional(),
+    // Deprecated and ignored. Retained only so that older configs that still
+    // set a `displayName` continue to load under the `.strict()` schema instead
+    // of failing validation. It has no effect on routing or the UI.
+    displayName: z.string().optional(),
   })
   .strict();
 

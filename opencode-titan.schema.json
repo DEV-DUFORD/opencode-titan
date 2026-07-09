@@ -115,11 +115,6 @@
         "variant": {
           "type": "string"
         },
-        "displayName": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Human-readable display name for this Myrmidon"
-        },
         "provider": {
           "type": "string",
           "minLength": 1,

@@ -8,7 +8,6 @@ import {
 
 export interface AgentDefinition {
   name: string;
-  displayName?: string;
   description?: string;
   config: AgentConfig;
 }
@@ -73,7 +72,6 @@ export function buildTitanPrompt(
           ? `\n- **Context Window:** ~${myrmidon.maxContextLength.toLocaleString()} tokens (HARD limit — this worker cannot hold more than this. Do NOT hand it tasks whose instructions + expected exploration would exceed roughly this budget; give large/complex/many-file work to a bigger-context worker instead.)`
           : ''
       }${myrmidon.notes ? `\n- **Notes:** ${myrmidon.notes}` : ''}
-${myrmidon.displayName ? `- **Display Name (UI label only — NEVER use this to route or to refer to this worker; always say @${name}):** ${myrmidon.displayName}` : ''}
 </Myrmidon>`;
     })
     .join('\n\n');
