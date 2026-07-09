@@ -1,6 +1,6 @@
 {
   "name": "opencode-titan",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Distributed delegation plugin for OpenCode — Titan orchestrator with parallel Myrmidons",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
