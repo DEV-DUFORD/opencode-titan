@@ -1,0 +1,69 @@
+{
+  "titan": {
+    "model": "Quad-MI50.Ornith-1.0-397B-Q4_K_L"
+    //"model": "Quad-MI50.Qwen3.6-27B-Q8_0"
+  },
+  "myrmidons": [
+    {
+      "model": "Dual-3060.Ornith-1.0-35B-Q4_K_M",
+      "speed": 7,
+      "intelligence": 5,
+      "modelType": "sparse",
+      "provider": "nerd-server",
+      "notes": "Fairly quick but wouldn't trust it for much beyond investigating things"
+    },
+    {
+      "model": "Single-3090.Ornith-1.0-35B-A3B-Q5_K_L",
+      "speed": 9,
+      "intelligence": 7,
+      "modelType": "sparse",
+      "provider": "nerd-computer",
+      "notes": "This should really be your primary invetigator tool, blazing fast"
+    },
+    {
+      "model": "Single-3090.Qwen3.6-27B-Q8_0",
+      "speed": 5,
+      "intelligence": 9,
+      "modelType": "dense",
+      "provider": "nerd-computer",
+      "maxContextLength": 80000,
+      "notes": "If you have the nerd-ai Qwen 27B instance off doing something logic heavy and you need another smart task done in parallel go for this, however, the nerd-ai Qwen 3.6 27B option should take priority over this one, as it as 3x the context length"
+    },
+    {
+      "model": "Dual-V340.ornith-1.0-35b-Q5_K_L",
+      "speed": 1,
+      "intelligence": 7,
+      "modelType": "sparse",
+      "provider": "nerd-dell",
+      "maxContextLength": 20000,
+      "enabled": false,
+      "notes": "Due to the hardware it's on, it gets really slow after 20k tokens, unless the work is super light, can take over 20 minutes on a task that would take other myrmidons 2, so best to be used for light operations, good with terminal commands"
+    },
+    {
+      "model": "Dual-V340.Mellum2-12B-A2.5B-Thinking-Q8_0",
+      "speed": 3,
+      "intelligence": 3,
+      "modelType": "sparse",
+      "provider": "nerd-dell",
+      "maxContextLength": 40000,
+      "enabled": false,
+      "notes": "Fast, but dumb, I'd say avoid using this unless you have have a very small operation that you would like to have a different archtecture look at, like a quick quality review of a single file's code change.  Otherwise do not trust this model to be able to figure anything out on it's own."
+    },
+    {
+      "model": "Mac-M5-Pro-48GB.Ornith-1.0-35B-4bit",
+      "speed": 9,
+      "intelligence": 5,
+      "modelType": "sparse",
+      "provider": "m5-mac",
+      "notes": "Very quick, slower than the 3090 Ornith model, but use as your second research model behind it, so, if you have two tasks that need investigation, this should always be your second behind the 3090 Ornith model."
+    },
+    {
+      "model": "Quad-MI50.Qwen3.6-27B-Q8_0",
+      "speed": 8,
+      "intelligence": 9,
+      "modelType": "dense",
+      "provider": "nerd-ai",
+      "notes": "Your big thinker, most capable model of the bunch. Full 256k context window, this is the one you should trust with your most difficult tasks."
+    }
+  ]
+}

@@ -126,6 +126,9 @@ Here's a complete starting configuration:
 }
 ```
 
+> [!TIP]
+> Want a fuller, real-world reference? See [`opencode-titan.example.jsonc`](opencode-titan.example.jsonc) — a multi-provider fleet with per-Myrmidon `notes`, `maxContextLength` limits, and a couple of workers toggled off via `enabled: false`.
+
 > [!NOTE]
 > The legacy `children` key is still accepted as a deprecated alias for `myrmidons` (and each Myrmidon is also routable under its old `child-N` name), so existing configs keep working. New configs should use `myrmidons`. If both keys are present, `myrmidons` wins.
 
